@@ -570,7 +570,12 @@ impl P25Handler for P25Receiver {
             return;
         }
 
-        match tsbk.opcode().unwrap() {
+        let opcode = match tsbk.opcode() {
+            Some(o) => o,
+            None => return,
+        };
+
+        match opcode {
             TSBKOpcode::GroupVoiceUpdate => {
                 let dec = tsbk::GroupVoiceUpdate::new(tsbk);
                 let ch1 = dec.channel_a();
