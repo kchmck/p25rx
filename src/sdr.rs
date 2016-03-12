@@ -300,7 +300,7 @@ impl MainApp {
 
     fn draw_site(&self, mut top: &mut [u8], mut bot: &mut [u8], prefix: char) {
         write!(top, "Site").unwrap();
-        write!(bot, "{}{:>15}", prefix, self.state.site).unwrap();
+        write!(bot, "{}{:>15}", prefix, self.state.sites[self.state.site].name).unwrap();
     }
 
     fn draw_volume(&self, buf: &mut [u8]) {
