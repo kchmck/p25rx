@@ -754,18 +754,17 @@ fn main() {
     let (tx_ui_ev, rx_ui_ev) = sync_channel(64);
     let (tx_ctl_ev, rx_ctl_ev) = sync_channel(16);
     let (tx_recv_ev, rx_recv_ev) = sync_channel(64);
-
     let (tx_sdr_samp, rx_sdr_samp) = sync_channel(64);
-    let (tx_aud_samp, rx_aud_samp) = channel();
+    let (tx_aud_ev, rx_aud_ev) = channel();
 
     let mut app = MainApp::new(talkgroups, sites.clone(), gains, rx_ui_ev,
         tx_ctl_ev.clone(), tx_recv_ev.clone());
     let mut controller = Controller::new(control, rx_ctl_ev);
     let mut radio = Radio::new(tx_sdr_samp);
     let mut demod = Demod::new(rx_sdr_samp, tx_ui_ev.clone(), tx_recv_ev.clone());
-    let mut audio = Audio::new(rx_aud_samp);
+    let mut audio = Audio::new(rx_aud_ev);
     let mut receiver = P25Receiver::new(sites.clone(), rx_recv_ev, tx_ui_ev.clone(),
-        tx_ctl_ev.clone(), tx_aud_samp.clone());
+        tx_ctl_ev.clone(), tx_aud_ev.clone());
 
     let mut rotary = RotaryDecoder::new();
     let tx_rotary = tx_ui_ev.clone();
