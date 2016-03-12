@@ -98,10 +98,8 @@ enum UIEvent {
 enum View {
     Main,
     Volume,
-    Settings,
     SettingGain,
     AdjustGain,
-    SettingExit,
     Poweroff,
 }
 
@@ -114,10 +112,8 @@ impl View {
         use self::View::*;
 
         match self {
-            Main => Settings,
-            Settings => Poweroff,
-            SettingGain => SettingExit,
-            SettingExit => SettingGain,
+            Main => SettingGain,
+            SettingGain => Poweroff,
             Poweroff => Main,
             _ => unreachable!(),
         }
@@ -128,10 +124,8 @@ impl View {
 
         match self {
             Main => Poweroff,
-            Settings => Main,
-            SettingGain => SettingExit,
-            SettingExit => SettingGain,
-            Poweroff => Settings,
+            SettingGain => Main,
+            Poweroff => Main,
             _ => unreachable!(),
         }
     }
@@ -142,10 +136,8 @@ impl View {
         match self {
             Main => Volume,
             Volume => Main,
-            Settings => SettingGain,
             SettingGain => AdjustGain,
             AdjustGain => SettingGain,
-            SettingExit => Settings,
             _ => unreachable!(),
         }
     }
@@ -266,10 +258,8 @@ impl MainApp {
                 write!(top, "Volume").unwrap();
                 self.draw_volume(bot);
             },
-            View::Settings => write!(top, "Settings").unwrap(),
             View::SettingGain => self.draw_gain(top, bot, ' '),
             View::AdjustGain => self.draw_gain(top, bot, '\x7e'),
-            View::SettingExit => write!(top, "Exit?").unwrap(),
             View::Poweroff => write!(top, "Poweroff?").unwrap(),
         }
     }
