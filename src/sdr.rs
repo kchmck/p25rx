@@ -566,6 +566,10 @@ impl P25Handler for P25Receiver {
             return;
         }
 
+        if tsbk.crc() != tsbk.calc_crc() {
+            return;
+        }
+
         match tsbk.opcode().unwrap() {
             TSBKOpcode::GroupVoiceUpdate => {
                 let dec = tsbk::GroupVoiceUpdate::new(tsbk);
