@@ -20,10 +20,11 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Read, Write};
 use std::process::Command;
+use std::sync::Arc;
 use std::sync::mpsc::{channel, sync_channel, Sender, SyncSender, Receiver};
 use std::thread;
 
-use cfg::channels::P25Channels;
+use cfg::sites::{parse_sites, P25Sites};
 use cfg::talkgroups::{parse_talkgroups, TalkGroups};
 use collect_slice::CollectSlice;
 use dsp::decim::{DecimationFactor, Decimator};
@@ -36,7 +37,7 @@ use num::traits::Zero;
 use p25::error::P25Error;
 use p25::filters::ReceiveFilter;
 use p25::nid::NetworkID;
-use p25::receiver::{ReceiverEvent, DataUnitReceiver};
+use p25::receiver::DataUnitReceiver;
 use p25::status::StreamSymbol;
 use p25::trunking::decode::TalkGroup;
 use p25::trunking::tsbk::{self, TSBKFields, TSBKReceiver, TSBKOpcode};
@@ -79,6 +80,8 @@ const FM_DEV: u32 = 5000;
 
 const IMBE_FILE: &'static str = "imbe.fifo";
 
+const DEFAULT_SITE: usize = 0;
+
 pub struct Decimate5;
 
 impl DecimationFactor for Decimate5 {
@@ -100,6 +103,8 @@ enum View {
     Volume,
     SettingGain,
     AdjustGain,
+    SettingSite,
+    AdjustSite,
     Poweroff,
 }
 
@@ -113,7 +118,8 @@ impl View {
 
         match self {
             Main => SettingGain,
-            SettingGain => Poweroff,
+            SettingGain => SettingSite,
+            SettingSite => Poweroff,
             Poweroff => Main,
             _ => unreachable!(),
         }
@@ -125,7 +131,8 @@ impl View {
         match self {
             Main => Poweroff,
             SettingGain => Main,
-            Poweroff => Main,
+            SettingSite => SettingGain,
+            Poweroff => SettingSite,
             _ => unreachable!(),
         }
     }
@@ -138,6 +145,8 @@ impl View {
             Volume => Main,
             SettingGain => AdjustGain,
             AdjustGain => SettingGain,
+            SettingSite => AdjustSite,
+            AdjustSite => SettingSite,
             _ => unreachable!(),
         }
     }
@@ -145,10 +154,12 @@ impl View {
 
 struct AppState {
     pub gains: (TunerGains, usize),
+    pub sites: Arc<P25Sites>,
     pub view: View,
     pub volume: usize,
     /// Index into gains array.
     pub gain: usize,
+    pub site: usize,
     pub talkgroup: TalkGroup,
     pub freq: u32,
     pub signal: SignalLevel,
@@ -170,6 +181,14 @@ impl AppState {
     pub fn decrease_gain(&mut self) {
         self.gain = max(self.gain.saturating_sub(1), 0);
     }
+
+    pub fn next_site(&mut self) {
+        self.site = min(self.site + 1, self.sites.len() - 1);
+    }
+
+    pub fn prev_site(&mut self) {
+        self.site = self.site.saturating_sub(1);
+    }
 }
 
 struct MainApp {
@@ -178,22 +197,27 @@ struct MainApp {
     talkgroups: TalkGroups,
     events: Receiver<UIEvent>,
     sdr: SyncSender<ControllerEvent>,
+    recv: SyncSender<ReceiverEvent>,
 }
 
 impl MainApp {
     pub fn new(talkgroups: TalkGroups,
+               sites: Arc<P25Sites>,
                gains: (TunerGains, usize),
                events: Receiver<UIEvent>,
-               sdr: SyncSender<ControllerEvent>)
+               sdr: SyncSender<ControllerEvent>,
+               recv: SyncSender<ReceiverEvent>)
         -> MainApp
     {
         MainApp {
             lcd: LCD::new(),
             state: AppState {
                 gains: gains,
+                sites: sites,
                 view: View::default(),
                 volume: (MAX_VOL + MIN_VOL) / 2,
                 gain: gains.1 - 1,
+                site: DEFAULT_SITE,
                 talkgroup: TalkGroup::Nobody,
                 freq: 0,
                 signal: SignalLevel::None,
@@ -201,11 +225,13 @@ impl MainApp {
             talkgroups: talkgroups,
             events: events,
             sdr: sdr,
+            recv: recv,
         }.init()
     }
 
     fn init(mut self) -> Self {
         self.commit_gain();
+        self.commit_site();
         self.commit_volume();
 
         self.lcd.backlight_on();
@@ -260,6 +286,8 @@ impl MainApp {
             },
             View::SettingGain => self.draw_gain(top, bot, ' '),
             View::AdjustGain => self.draw_gain(top, bot, '\x7e'),
+            View::SettingSite => self.draw_site(top, bot, ' '),
+            View::AdjustSite => self.draw_site(top, bot, '\x7e'),
             View::Poweroff => write!(top, "Poweroff?").unwrap(),
         }
     }
@@ -268,6 +296,11 @@ impl MainApp {
         write!(top, "Tuner Gain").unwrap();
         write!(bot, "{}{: >13.1}dB", prefix,
             self.state.gains.0[self.state.gain] as f32 / 10.0).unwrap();
+    }
+
+    fn draw_site(&self, mut top: &mut [u8], mut bot: &mut [u8], prefix: char) {
+        write!(top, "Site").unwrap();
+        write!(bot, "{}{:>15}", prefix, self.state.site).unwrap();
     }
 
     fn draw_volume(&self, buf: &mut [u8]) {
@@ -293,6 +326,11 @@ impl MainApp {
                         .status()
                         .unwrap()
                         .success());
+    }
+
+    fn commit_site(&self) {
+        self.recv.send(ReceiverEvent::SetSite(self.state.site))
+            .expect("unable to commit site");
     }
 
     fn poweroff(&mut self) {
@@ -334,6 +372,7 @@ impl MainApp {
                     self.commit_volume();
                 },
                 AdjustGain => self.state.increase_gain(),
+                AdjustSite => self.state.next_site(),
                 _ => self.state.view = self.state.view.next(),
             },
             UIEvent::Rotation(Rotation::CounterClockwise) => match self.state.view {
@@ -342,12 +381,17 @@ impl MainApp {
                     self.commit_volume();
                 },
                 AdjustGain =>self.state.decrease_gain(),
+                AdjustSite => self.state.prev_site(),
                 _ => self.state.view = self.state.view.prev(),
             },
             UIEvent::ButtonPress => match self.state.view {
                 Poweroff => self.poweroff(),
                 AdjustGain => {
                     self.commit_gain();
+                    self.state.view = self.state.view.select();
+                },
+                AdjustSite => {
+                    self.commit_site();
                     self.state.view = self.state.view.select();
                 },
                 _ => self.state.view = self.state.view.select(),
@@ -365,13 +409,13 @@ struct Demod {
     demod: FMDemod,
     reader: Receiver<Checkout<Vec<u8>>>,
     ui: SyncSender<UIEvent>,
-    chan: SyncSender<Checkout<Vec<f32>>>,
+    chan: SyncSender<ReceiverEvent>,
 }
 
 impl Demod {
     pub fn new(reader: Receiver<Checkout<Vec<u8>>>,
                ui: SyncSender<UIEvent>,
-               chan: SyncSender<Checkout<Vec<f32>>>)
+               chan: SyncSender<ReceiverEvent>)
         -> Demod
     {
         Demod {
@@ -430,7 +474,8 @@ impl Demod {
                    .map(|&s| self.demod.feed(s))
                    .collect_slice(&mut baseband[..]);
 
-            self.chan.send(baseband).expect("unable to send baseband");
+            self.chan.send(ReceiverEvent::Baseband(baseband))
+                .expect("unable to send baseband");
         }
     }
 }
@@ -488,25 +533,32 @@ impl Controller {
     }
 }
 
+enum ReceiverEvent {
+    Baseband(Checkout<Vec<f32>>),
+    SetSite(usize),
+}
+
 struct P25Receiver {
-    channels: P25Channels,
-    demod: Receiver<Checkout<Vec<f32>>>,
+    sites: Arc<P25Sites>,
+    site: usize,
+    events: Receiver<ReceiverEvent>,
     ui: SyncSender<UIEvent>,
     sdr: SyncSender<ControllerEvent>,
     audio: Sender<AudioEvent>,
 }
 
 impl P25Receiver {
-    pub fn new(channels: P25Channels,
-               demod: Receiver<Checkout<Vec<f32>>>,
+    pub fn new(sites: Arc<P25Sites>,
+               events: Receiver<ReceiverEvent>,
                ui: SyncSender<UIEvent>,
                sdr: SyncSender<ControllerEvent>,
                audio: Sender<AudioEvent>)
         -> P25Receiver
     {
         P25Receiver {
-            channels: channels,
-            demod: demod,
+            sites: sites,
+            events: events,
+            site: DEFAULT_SITE,
             ui: ui,
             sdr: sdr,
             audio: audio,
@@ -514,8 +566,12 @@ impl P25Receiver {
     }
 
     fn init(self) -> Self {
-        self.set_freq(self.channels.control);
+        self.switch_control();
         self
+    }
+
+    fn switch_control(&self) {
+        self.set_freq(self.sites[self.site].control);
     }
 
     fn set_freq(&self, freq: u32) {
@@ -529,10 +585,18 @@ impl P25Receiver {
         let mut messages = MessageReceiver::new();
 
         loop {
-            let baseband = self.demod.recv().expect("unable to receive baseband");
+            let event = self.events.recv().expect("unable to receive baseband");
 
-            for &s in baseband.iter() {
-                messages.feed(s, self);
+            match event {
+                ReceiverEvent::Baseband(samples) => {
+                    for &s in samples.iter() {
+                        messages.feed(s, self);
+                    }
+                },
+                ReceiverEvent::SetSite(site) => {
+                    self.site = site;
+                    self.switch_control();
+                },
             }
         }
     }
@@ -575,7 +639,7 @@ impl P25Handler for P25Receiver {
                     return;
                 }
 
-                let freq = match self.channels.traffic.get(&ch1.number()) {
+                let freq = match self.sites[self.site].traffic.get(&ch1.number()) {
                     Some(&freq) => freq,
                     None => {
                         println!("talkgroup 1:{:?}", dec.talk_group_a());
@@ -596,7 +660,7 @@ impl P25Handler for P25Receiver {
     }
 
     fn handle_term(&mut self) {
-        self.set_freq(self.channels.control);
+        self.switch_control();
         self.audio.send(AudioEvent::EndTransmission)
             .expect("unable to send end of transmission");
     }
@@ -673,29 +737,34 @@ fn main() {
         parse_talkgroups(File::open(conf).unwrap())
     };
 
-    let channels = {
+    let sites = {
         let mut conf = conf.clone();
         conf.push("p25.toml");
 
         let mut toml = String::new();
         File::open(conf).unwrap().read_to_string(&mut toml).unwrap();
 
-        P25Channels::new(&toml).unwrap()
+        Arc::new(parse_sites(&toml).unwrap())
     };
+
+    if sites.len() == 0 {
+        return;
+    }
 
     let (tx_ui_ev, rx_ui_ev) = sync_channel(64);
     let (tx_ctl_ev, rx_ctl_ev) = sync_channel(16);
+    let (tx_recv_ev, rx_recv_ev) = sync_channel(64);
 
     let (tx_sdr_samp, rx_sdr_samp) = sync_channel(64);
-    let (tx_demod_samp, rx_demod_samp) = sync_channel(64);
     let (tx_aud_samp, rx_aud_samp) = channel();
 
-    let mut app = MainApp::new(talkgroups, gains, rx_ui_ev, tx_ctl_ev.clone());
+    let mut app = MainApp::new(talkgroups, sites.clone(), gains, rx_ui_ev,
+        tx_ctl_ev.clone(), tx_recv_ev.clone());
     let mut controller = Controller::new(control, rx_ctl_ev);
     let mut radio = Radio::new(tx_sdr_samp);
-    let mut demod = Demod::new(rx_sdr_samp, tx_ui_ev.clone(), tx_demod_samp);
+    let mut demod = Demod::new(rx_sdr_samp, tx_ui_ev.clone(), tx_recv_ev.clone());
     let mut audio = Audio::new(rx_aud_samp);
-    let mut receiver = P25Receiver::new(channels, rx_demod_samp, tx_ui_ev.clone(),
+    let mut receiver = P25Receiver::new(sites.clone(), rx_recv_ev, tx_ui_ev.clone(),
         tx_ctl_ev.clone(), tx_aud_samp.clone());
 
     let mut rotary = RotaryDecoder::new();
@@ -786,6 +855,7 @@ impl MessageReceiver {
     pub fn feed<H: P25Handler>(&mut self, s: f32, handler: &mut H) {
         use self::MessageReceiverState::*;
         use p25::nid::DataUnit::*;
+        use p25::receiver::ReceiverEvent;
 
         let event = match self.recv.feed(self.filt.feed(s)) {
             Some(Ok(event)) => event,
