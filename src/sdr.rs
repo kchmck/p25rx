@@ -167,7 +167,7 @@ struct AppState {
 
 impl AppState {
     pub fn increase_volume(&mut self) {
-        self.volume = min(self.volume.saturating_add(VOL_STEP), MAX_VOL);
+        self.volume = min(self.volume + VOL_STEP, MAX_VOL);
     }
 
     pub fn decrease_volume(&mut self) {
@@ -175,11 +175,11 @@ impl AppState {
     }
 
     pub fn increase_gain(&mut self) {
-        self.gain = min(self.gain.saturating_add(1), self.gains.1 - 1);
+        self.gain = min(self.gain + 1, self.gains.1 - 1);
     }
 
     pub fn decrease_gain(&mut self) {
-        self.gain = max(self.gain.saturating_sub(1), 0);
+        self.gain = self.gain.saturating_sub(1);
     }
 
     pub fn next_site(&mut self) {
@@ -333,6 +333,11 @@ impl MainApp {
             .expect("unable to commit site");
     }
 
+    fn commit_gain(&mut self) {
+        self.sdr.send(ControllerEvent::SetGain(self.state.gains.0[self.state.gain]))
+            .expect("unable to commit gain");
+    }
+
     fn poweroff(&mut self) {
         self.lcd.clear();
         self.lcd.backlight_off();
@@ -343,11 +348,6 @@ impl MainApp {
                         .status()
                         .unwrap()
                         .success());
-    }
-
-    fn commit_gain(&mut self) {
-        self.sdr.send(ControllerEvent::SetGain(self.state.gains.0[self.state.gain]))
-            .expect("unable to commit gain");
     }
 
     pub fn run(&mut self) {
