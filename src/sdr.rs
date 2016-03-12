@@ -65,7 +65,7 @@ use p25::voice::{
 mod filters;
 mod iq;
 
-use filters::{SecondDecimFIR, BandpassFIR};
+use filters::{DecimFIR, BandpassFIR};
 
 const BUF_COUNT: usize = 16;
 const BUF_SIZE: usize = 32768;
@@ -404,7 +404,7 @@ impl MainApp {
 }
 
 struct Demod {
-    decim: Decimator<Decimate5, SecondDecimFIR>,
+    decim: Decimator<Decimate5, DecimFIR>,
     bandpass: FIRFilter<BandpassFIR>,
     demod: FMDemod,
     reader: Receiver<Checkout<Vec<u8>>>,

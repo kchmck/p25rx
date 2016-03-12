@@ -1,7 +1,7 @@
 use num::complex::Complex32;
 
 /// Lowpass filter with passband to 4kHz and stopband after 24kHz.
-impl_fir!(SecondDecimFIR, Complex32, 41, [
+impl_fir!(DecimFIR, Complex32, 41, [
     0.000786541581019716,
     0.000597016981378991,
     0.000396862662678544,
@@ -121,7 +121,7 @@ mod tests {
 
     #[test]
     fn verify_symmetry() {
-        SecondDecimFIR::verify_symmetry();
+        DecimFIR::verify_symmetry();
         BandpassFIR::verify_symmetry();
     }
 }
