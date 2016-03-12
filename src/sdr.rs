@@ -48,7 +48,6 @@ use pool::{Pool, Checkout};
 use rtlsdr::{Control, Reader, TunerGains};
 use sigpower::power;
 use sigpower::smeter::SignalLevel;
-use sigpower::squelch::{Squelch, SquelchThreshold};
 use ui::button::Button;
 use ui::lcd::LCD;
 use ui::rotary::{RotaryDecoder, Rotation};
@@ -100,8 +99,6 @@ enum View {
     Main,
     Volume,
     Settings,
-    SettingSquelch,
-    AdjustSquelch,
     SettingGain,
     AdjustGain,
     SettingExit,
@@ -119,9 +116,8 @@ impl View {
         match self {
             Main => Settings,
             Settings => Poweroff,
-            SettingSquelch => SettingGain,
             SettingGain => SettingExit,
-            SettingExit => SettingSquelch,
+            SettingExit => SettingGain,
             Poweroff => Main,
             _ => unreachable!(),
         }
@@ -133,8 +129,7 @@ impl View {
         match self {
             Main => Poweroff,
             Settings => Main,
-            SettingSquelch => SettingExit,
-            SettingGain => SettingSquelch,
+            SettingGain => SettingExit,
             SettingExit => SettingGain,
             Poweroff => Settings,
             _ => unreachable!(),
@@ -147,9 +142,7 @@ impl View {
         match self {
             Main => Volume,
             Volume => Main,
-            Settings => SettingSquelch,
-            SettingSquelch => AdjustSquelch,
-            AdjustSquelch => SettingSquelch,
+            Settings => SettingGain,
             SettingGain => AdjustGain,
             AdjustGain => SettingGain,
             SettingExit => Settings,
@@ -166,7 +159,6 @@ struct AppState {
     pub gain: usize,
     pub talkgroup: TalkGroup,
     pub freq: u32,
-    pub squelch: SquelchThreshold,
     pub signal: SignalLevel,
 }
 
@@ -186,25 +178,6 @@ impl AppState {
     pub fn decrease_gain(&mut self) {
         self.gain = max(self.gain.saturating_sub(1), 0);
     }
-
-    pub fn squelch_next(&mut self) {
-        self.squelch = match self.squelch {
-            SquelchThreshold::Level(l) =>
-                SquelchThreshold::Level(min(l + 1, 9)),
-            SquelchThreshold::Open => SquelchThreshold::Level(1),
-        };
-    }
-
-    pub fn squelch_prev(&mut self) {
-        self.squelch = match self.squelch {
-            SquelchThreshold::Level(l) => if l == 1 {
-                SquelchThreshold::Open
-            } else {
-                SquelchThreshold::Level(l - 1)
-            },
-            SquelchThreshold::Open => SquelchThreshold::Open,
-        };
-    }
 }
 
 struct MainApp {
@@ -213,15 +186,13 @@ struct MainApp {
     talkgroups: TalkGroups,
     events: Receiver<UIEvent>,
     sdr: SyncSender<ControllerEvent>,
-    demod: SyncSender<DemodEvent>,
 }
 
 impl MainApp {
     pub fn new(talkgroups: TalkGroups,
                gains: (TunerGains, usize),
                events: Receiver<UIEvent>,
-               sdr: SyncSender<ControllerEvent>,
-               demod: SyncSender<DemodEvent>)
+               sdr: SyncSender<ControllerEvent>)
         -> MainApp
     {
         MainApp {
@@ -233,19 +204,16 @@ impl MainApp {
                 gain: gains.1 - 1,
                 talkgroup: TalkGroup::Nobody,
                 freq: 0,
-                squelch: SquelchThreshold::Level(3),
                 signal: SignalLevel::None,
             },
             talkgroups: talkgroups,
             events: events,
             sdr: sdr,
-            demod: demod,
         }.init()
     }
 
     fn init(mut self) -> Self {
         self.commit_gain();
-        self.commit_squelch();
         self.commit_volume();
 
         self.lcd.backlight_on();
@@ -299,23 +267,10 @@ impl MainApp {
                 self.draw_volume(bot);
             },
             View::Settings => write!(top, "Settings").unwrap(),
-            View::SettingSquelch => self.draw_squelch(top, bot, ' '),
-            View::AdjustSquelch => self.draw_squelch(top, bot, '\x7e'),
             View::SettingGain => self.draw_gain(top, bot, ' '),
             View::AdjustGain => self.draw_gain(top, bot, '\x7e'),
             View::SettingExit => write!(top, "Exit?").unwrap(),
             View::Poweroff => write!(top, "Poweroff?").unwrap(),
-        }
-    }
-
-    fn draw_squelch(&self, mut top: &mut [u8], mut bot: &mut [u8], prefix: char) {
-        write!(top, "Squelch").unwrap();
-
-        match self.state.squelch {
-            SquelchThreshold::Level(l) =>
-                write!(bot, "{: <14}S{}", prefix, l).unwrap(),
-            SquelchThreshold::Open =>
-                write!(bot, "{: <12}Open", prefix).unwrap(),
         }
     }
 
@@ -367,11 +322,6 @@ impl MainApp {
             .expect("unable to commit gain");
     }
 
-    fn commit_squelch(&mut self) {
-        self.demod.send(DemodEvent::SetSquelch(self.state.squelch))
-            .expect("unable to commit squelch");
-    }
-
     pub fn run(&mut self) {
         loop {
             match self.events.recv() {
@@ -393,7 +343,6 @@ impl MainApp {
                     self.state.increase_volume();
                     self.commit_volume();
                 },
-                AdjustSquelch => self.state.squelch_next(),
                 AdjustGain => self.state.increase_gain(),
                 _ => self.state.view = self.state.view.next(),
             },
@@ -402,16 +351,11 @@ impl MainApp {
                     self.state.decrease_volume();
                     self.commit_volume();
                 },
-                AdjustSquelch => self.state.squelch_prev(),
                 AdjustGain =>self.state.decrease_gain(),
                 _ => self.state.view = self.state.view.prev(),
             },
             UIEvent::ButtonPress => match self.state.view {
                 Poweroff => self.poweroff(),
-                AdjustSquelch => {
-                    self.commit_squelch();
-                    self.state.view = self.state.view.select();
-                },
                 AdjustGain => {
                     self.commit_gain();
                     self.state.view = self.state.view.select();
@@ -425,24 +369,17 @@ impl MainApp {
     }
 }
 
-enum DemodEvent {
-    SetSquelch(SquelchThreshold)
-}
-
 struct Demod {
     decim: Decimator<Decimate5, SecondDecimFIR>,
     bandpass: FIRFilter<BandpassFIR>,
     demod: FMDemod,
-    squelch: Squelch,
     reader: Receiver<Checkout<Vec<u8>>>,
-    events: Receiver<DemodEvent>,
     ui: SyncSender<UIEvent>,
     chan: SyncSender<Checkout<Vec<f32>>>,
 }
 
 impl Demod {
     pub fn new(reader: Receiver<Checkout<Vec<u8>>>,
-               events: Receiver<DemodEvent>,
                ui: SyncSender<UIEvent>,
                chan: SyncSender<Checkout<Vec<f32>>>)
         -> Demod
@@ -451,9 +388,7 @@ impl Demod {
             decim: Decimator::new(),
             bandpass: FIRFilter::new(),
             demod: FMDemod::new(FM_DEV as f32 / BASEBAND_SAMPLE_RATE as f32),
-            squelch: Squelch::new(SquelchThreshold::Level(3)),
             reader: reader,
-            events: events,
             ui: ui,
             chan: chan,
         }
@@ -496,10 +431,6 @@ impl Demod {
                     .expect("unable to send signal level");
             }
 
-            if self.squelch.is_squelched(level) {
-                continue;
-            }
-
             let mut baseband = pool.checkout().expect("unable to allocate baseband");
 
             // This is safe because each input sample produces exactly one output sample.
@@ -510,13 +441,6 @@ impl Demod {
                    .collect_slice(&mut baseband[..]);
 
             self.chan.send(baseband).expect("unable to send baseband");
-
-            match self.events.try_recv() {
-                Ok(event) => match event {
-                    DemodEvent::SetSquelch(thresh) => self.squelch.set_threshold(thresh),
-                },
-                Err(_) => {}
-            }
         }
     }
 }
@@ -857,7 +781,6 @@ fn main() {
         P25Channels::new(&toml).unwrap()
     };
 
-    let (tx_demod_ev, rx_demod_ev) = sync_channel(16);
     let (tx_ui_ev, rx_ui_ev) = sync_channel(64);
     let (tx_ctl_ev, rx_ctl_ev) = sync_channel(16);
 
@@ -865,11 +788,10 @@ fn main() {
     let (tx_demod_samp, rx_demod_samp) = sync_channel(64);
     let (tx_aud_samp, rx_aud_samp) = channel();
 
-    let mut app = MainApp::new(talkgroups, gains, rx_ui_ev, tx_ctl_ev.clone(),
-        tx_demod_ev.clone());
+    let mut app = MainApp::new(talkgroups, gains, rx_ui_ev, tx_ctl_ev.clone());
     let mut controller = Controller::new(control, rx_ctl_ev);
     let mut radio = Radio::new(tx_sdr_samp);
-    let mut demod = Demod::new(rx_sdr_samp, rx_demod_ev, tx_ui_ev.clone(), tx_demod_samp);
+    let mut demod = Demod::new(rx_sdr_samp, tx_ui_ev.clone(), tx_demod_samp);
     let mut audio = Audio::new(rx_aud_samp);
     let mut receiver = P25Receiver::new(channels, rx_demod_samp, tx_ui_ev.clone(),
         tx_ctl_ev.clone(), tx_aud_samp.clone());
