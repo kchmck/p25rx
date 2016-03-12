@@ -575,21 +575,21 @@ impl P25Handler for P25Receiver {
                     return;
                 }
 
+                let freq = match self.channels.traffic.get(&ch1.number()) {
+                    Some(&freq) => freq,
+                    None => {
+                        println!("talkgroup 1:{:?}", dec.talk_group_a());
+                        println!("  number:{}", ch1.number());
+                        println!("talkgroup 2:{:?}", dec.talk_group_b());
+                        println!("  number:{}", ch2.number());
+
+                        return;
+                    },
+                };
+
+                self.set_freq(freq);
                 self.ui.send(UIEvent::SetTalkGroup(dec.talk_group_a()))
                     .expect("unable to send talkgroup");
-
-                match ch1.number() {
-                    1796 => self.set_freq(773_231_250),
-                    1368 => self.set_freq(770_556_250),
-                    1280 => self.set_freq(773_231_250),
-                    1160 => self.set_freq(769_256_250),
-                    _ => {},
-                }
-
-                println!("talkgroup 1:{:?}", dec.talk_group_a());
-                println!("  number:{}", ch1.number());
-                println!("talkgroup 2:{:?}", dec.talk_group_b());
-                println!("  number:{}", ch2.number());
             },
             _ => {},
         }
