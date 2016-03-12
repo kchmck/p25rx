@@ -39,7 +39,7 @@ use p25::nid::NetworkID;
 use p25::receiver::{ReceiverEvent, DataUnitReceiver};
 use p25::status::StreamSymbol;
 use p25::trunking::decode::TalkGroup;
-use p25::trunking::tsbk::{self, TSBKFields, TSBKReceiver};
+use p25::trunking::tsbk::{self, TSBKFields, TSBKReceiver, TSBKOpcode};
 use p25::voice::control::LinkControlFields;
 use p25::voice::crypto::CryptoControlFields;
 use p25::voice::frame::VoiceFrame;
@@ -562,91 +562,15 @@ impl P25Handler for P25Receiver {
     }
 
     fn handle_tsbk(&mut self, tsbk: TSBKFields) {
-        use p25::trunking::tsbk::TSBKOpcode::*;
-
         if tsbk.mfg() != 0 {
             return;
         }
 
-        let print_common = || {
-            println!("");
-            println!("prot:{} opcode:{:?}", tsbk.protected(), tsbk.opcode());
-            println!("mfg:{:08b}", tsbk.mfg());
-            println!("crc:{:016b}", tsbk.crc());
-            println!("    {:016b}", tsbk.calc_crc());
-        };
-
         match tsbk.opcode().unwrap() {
-            UnitCallRequest => {
-                let dec = tsbk::UnitCallRequest::new(tsbk);
-                print_common();
-                println!("src:{:x}", dec.src_id());
-                println!("dest:{:x}", dec.dest_unit());
-            },
-            AltControlBroadcast => {
-                // let dec = tsbk::AltControlBroadcast::new(tsbk);
-                // let ch1 = dec.channel_a();
-                // let ch2 = dec.channel_b();
-                // println!("    rfss:{:x}", dec.rfss());
-                // println!("    site:{:x}", dec.site());
-                // println!("    channel A");
-                // println!("      band:{}", ch1.band());
-                // println!("      number:{}", ch1.number());
-                // println!("      services:{:?}", dec.services_a());
-                // println!("    channel B");
-                // println!("      band:{}", ch2.band());
-                // println!("      number:{}", ch2.number());
-                // println!("      services:{:?}", dec.serviced_b());
-            },
-            AdjacentSiteBroadcast | RFSSStatusBroadcast => {
-            //     let dec = tsbk::SiteStatusBroadcast::new(tsbk);
-            //     let ch = dec.channel();
-            //     let svc = dec.services();
-            //     println!("    area:{:x}", dec.area());
-            //     println!("    system:{:x}", dec.system());
-            //     println!("    rfss:{:x}", dec.rfss());
-            //     println!("    site:{:x}", dec.site());
-            //     println!("    channel");
-            //     println!("      band:{}", ch.band());
-            //     println!("      number:{}", ch.number());
-            //     println!("    services");
-            //     println!("      composite:{}", svc.is_composite());
-            //     println!("      updates:{}", svc.has_updates());
-            //     println!("      backup:{}", svc.is_backup());
-            //     println!("      data:{}", svc.has_data());
-            //     println!("      voice:{}", svc.has_voice());
-            //     println!("      reg:{}", svc.has_registration());
-            //     println!("      auth:{}", svc.has_auth());
-            },
-            ChannelParamsUpdate => {
-                // let dec = tsbk::ChannelParamsUpdate::new(tsbk);
-                // let p = dec.params();
-                // println!("    tx:{}Hz", p.tx_freq);
-                // println!("    rx:{}Hz", p.rx_freq);
-                // println!("    bw:{}Hz", p.bandwidth);
-            },
-            NetworkStatusBroadcast => {
-            //     let dec = tsbk::NetworkStatusBroadcast::new(tsbk);
-            //     let ch = dec.channel();
-            //     let svc = dec.services();
-            //     println!("    area:{:x}", dec.area());
-            //     println!("    wacn:{:x}", dec.wacn());
-            //     println!("    system:{:x}", dec.system());
-            //     println!("    channel");
-            //     println!("      band:{}", ch.band());
-            //     println!("      number:{}", ch.number());
-            //     println!("    services");
-            //     println!("      composite:{}", svc.is_composite());
-            //     println!("      updates:{}", svc.has_updates());
-            //     println!("      backup:{}", svc.is_backup());
-            //     println!("      data:{}", svc.has_data());
-            //     println!("      voice:{}", svc.has_voice());
-            //     println!("      reg:{}", svc.has_registration());
-            //     println!("      auth:{}", svc.has_auth());
-            },
-            GroupVoiceUpdate => {
+            TSBKOpcode::GroupVoiceUpdate => {
                 let dec = tsbk::GroupVoiceUpdate::new(tsbk);
                 let ch1 = dec.channel_a();
+                let ch2 = dec.channel_b();
 
                 if dec.talk_group_a() == TalkGroup::Other(0xCB68) {
                     return;
@@ -663,33 +587,12 @@ impl P25Handler for P25Receiver {
                     _ => {},
                 }
 
-                let ch2 = dec.channel_b();
-                // print_common();
                 println!("talkgroup 1:{:?}", dec.talk_group_a());
-                // println!("channel 1");
-                // println!("  band:{}", ch1.band());
                 println!("  number:{}", ch1.number());
                 println!("talkgroup 2:{:?}", dec.talk_group_b());
-                // println!("channel 2");
-                // println!("  band:{}", ch2.band());
                 println!("  number:{}", ch2.number());
             },
-            GroupVoiceGrant => {
-                // let dec = tsbk::GroupVoiceGrant::new(tsbk);
-                // print_common();
-                // println!("talkgroup:{:?}", dec.talk_group());
-                // println!("unit:0x{:X}", dec.src_unit());
-            },
-            // GroupAffiliationQuery
-            // LocRegistrationResponse
-            // GroupAffiliationResponse
-            // UnitRegistrationResponse
-            // DeregistrationAck
-            // AckResponse
-            Reserved => {},
-            _ => {
-                // println!("    NOT HANDLED {:?}", tsbk.opcode());
-            },
+            _ => {},
         }
     }
 
