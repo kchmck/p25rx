@@ -1,5 +1,6 @@
 extern crate cfg;
 extern crate collect_slice;
+extern crate throttle;
 extern crate imbe;
 extern crate libc;
 extern crate map_in_place;
@@ -49,6 +50,7 @@ use pool::{Pool, Checkout};
 use rtlsdr::{Control, Reader, TunerGains};
 use sigpower::power;
 use sigpower::smeter::SignalLevel;
+use throttle::Throttler;
 use ui::button::Button;
 use ui::lcd::LCD;
 use ui::rotary::{RotaryDecoder, Rotation};
@@ -432,7 +434,7 @@ impl Demod {
         let mut pool = Pool::with_capacity(16, || vec![0.0; BUF_SIZE / 2]);
         let mut samples = vec![Complex32::zero(); BUF_SIZE / 2];
 
-        let mut iter = 0;
+        let mut notifier = Throttler::new(16);
 
         loop {
             let bytes = self.reader.recv().expect("unable to receive sdr samples");
@@ -457,13 +459,10 @@ impl Demod {
             let level = SignalLevel::from_dbm(
                 power::power_dbm(&samples[..], 50.0) - 106.0);
 
-            iter += 1;
-            iter %= 16;
-
-            if iter == 0 {
+            notifier.throttle(|| {
                 self.ui.send(UIEvent::SetSignalLevel(level))
                     .expect("unable to send signal level");
-            }
+            });
 
             let mut baseband = pool.checkout().expect("unable to allocate baseband");
 
