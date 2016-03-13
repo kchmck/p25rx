@@ -11,7 +11,7 @@ cfg = {version = "1.0.0", path = "../cfg"}
 collect_slice = "1.0.0"
 dsp = {version = "1.0.0", path = "../dsp"}
 imbe = {version = "1.0.0", path = "../imbe"}
-libc = {git = "https://github.com/rust-lang/libc", rev = "b57e312"}
+libc = "0.2.8"
 map_in_place = {version = "1.0.0", path = "../map_in_place"}
 num = "0.1.30"
 p25 = {version = "1.0.0", path = "../p25"}
