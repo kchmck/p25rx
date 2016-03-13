@@ -869,6 +869,8 @@ impl MessageReceiver {
 
         let dibit = match event {
             ReceiverEvent::NetworkID(nid) => {
+                handler.handle_nid(nid);
+
                 self.state = match nid.data_unit() {
                     VoiceHeader =>
                         DecodeHeader(VoiceHeaderReceiver::new()),
@@ -890,8 +892,6 @@ impl MessageReceiver {
                         Idle
                     },
                 };
-
-                handler.handle_nid(nid);
 
                 return;
             },
