@@ -36,16 +36,14 @@ use map_in_place::MapInPlace;
 use num::complex::Complex32;
 use num::traits::Zero;
 use p25::error::P25Error;
-use p25::filters::ReceiveFilter;
 use p25::nid::NetworkID;
-use p25::receiver::DataUnitReceiver;
-use p25::status::StreamSymbol;
 use p25::trunking::decode::TalkGroup;
-use p25::trunking::tsbk::{self, TSBKFields, TSBKReceiver, TSBKOpcode};
+use p25::trunking::tsbk::{self, TSBKFields, TSBKOpcode};
 use p25::voice::control::LinkControlFields;
 use p25::voice::crypto::CryptoControlFields;
 use p25::voice::frame::VoiceFrame;
 use p25::voice::header::VoiceHeaderFields;
+use p25::message::{MessageReceiver, MessageHandler};
 use pool::{Pool, Checkout};
 use rtlsdr::{Control, Reader, TunerGains};
 use sigpower::power;
@@ -55,14 +53,6 @@ use ui::button::Button;
 use ui::lcd::LCD;
 use ui::rotary::{RotaryDecoder, Rotation};
 use xdg_basedir::dirs;
-
-use p25::voice::{
-    FrameGroupEvent,
-    VoiceCCFrameGroupReceiver,
-    VoiceHeaderReceiver,
-    VoiceLCFrameGroupReceiver,
-    VoiceLCTerminatorReceiver,
-};
 
 mod filters;
 mod iq;
@@ -601,7 +591,7 @@ impl P25Receiver {
     }
 }
 
-impl P25Handler for P25Receiver {
+impl MessageHandler for P25Receiver {
     fn handle_error(&mut self, _: P25Error) {}
     fn handle_nid(&mut self, _: NetworkID) {}
     fn handle_header(&mut self, _: VoiceHeaderFields) {}
@@ -821,169 +811,6 @@ fn main() {
         prctl::set_name("ui").unwrap();
         app.run();
     }).join().unwrap();
-}
-
-pub trait P25Handler {
-    fn handle_error(&mut self, err: P25Error);
-    fn handle_nid(&mut self, nid: NetworkID);
-    fn handle_header(&mut self, header: VoiceHeaderFields);
-    fn handle_frame(&mut self, frame: VoiceFrame);
-    fn handle_lc(&mut self, lc: LinkControlFields);
-    fn handle_cc(&mut self, cc: CryptoControlFields);
-    fn handle_data_frag(&mut self, data: u32);
-    fn handle_tsbk(&mut self, tsbk: TSBKFields);
-    fn handle_term(&mut self);
-}
-
-pub struct MessageReceiver {
-    recv: DataUnitReceiver,
-    filt: ReceiveFilter,
-    state: MessageReceiverState,
-}
-
-impl MessageReceiver {
-    pub fn new() -> MessageReceiver {
-        MessageReceiver {
-            recv: DataUnitReceiver::new(),
-            filt: ReceiveFilter::new(),
-            state: MessageReceiverState::Idle,
-        }
-    }
-
-    pub fn feed<H: P25Handler>(&mut self, s: f32, handler: &mut H) {
-        use self::MessageReceiverState::*;
-        use p25::nid::DataUnit::*;
-        use p25::receiver::ReceiverEvent;
-
-        let event = match self.recv.feed(self.filt.feed(s)) {
-            Some(Ok(event)) => event,
-            Some(Err(err)) => {
-                handler.handle_error(err);
-                self.recv.resync();
-
-                return;
-            },
-            None => return,
-        };
-
-        let dibit = match event {
-            ReceiverEvent::NetworkID(nid) => {
-                handler.handle_nid(nid);
-
-                self.state = match nid.data_unit() {
-                    VoiceHeader =>
-                        DecodeHeader(VoiceHeaderReceiver::new()),
-                    VoiceSimpleTerminator => {
-                        handler.handle_term();
-                        self.recv.flush_pads();
-                        Idle
-                    },
-                    VoiceLCTerminator =>
-                        DecodeLCTerminator(VoiceLCTerminatorReceiver::new()),
-                    VoiceLCFrameGroup =>
-                        DecodeLCFrameGroup(VoiceLCFrameGroupReceiver::new()),
-                    VoiceCCFrameGroup =>
-                        DecodeCCFrameGroup(VoiceCCFrameGroupReceiver::new()),
-                    TrunkingSignaling =>
-                        DecodeTSBK(TSBKReceiver::new()),
-                    DataPacket => {
-                        self.recv.resync();
-                        Idle
-                    },
-                };
-
-                return;
-            },
-            ReceiverEvent::Symbol(StreamSymbol::Status(_)) => return,
-            ReceiverEvent::Symbol(StreamSymbol::Data(dibit)) => dibit,
-        };
-
-        match self.state {
-            DecodeHeader(ref mut head) => match head.feed(dibit) {
-                Some(Ok(h)) => {
-                    handler.handle_header(h);
-                    self.recv.flush_pads();
-                },
-                Some(Err(err)) => {
-                    handler.handle_error(err);
-                    self.recv.resync();
-                },
-                None => {},
-            },
-            DecodeLCFrameGroup(ref mut fg) => match fg.feed(dibit) {
-                Some(Ok(event)) => match event {
-                    FrameGroupEvent::VoiceFrame(vf) => {
-                        handler.handle_frame(vf);
-
-                        if fg.done() {
-                            self.recv.flush_pads();
-                        }
-                    },
-                    FrameGroupEvent::Extra(lc) => handler.handle_lc(lc),
-                    FrameGroupEvent::DataFragment(data) => handler.handle_data_frag(data),
-                },
-                Some(Err(err)) => {
-                    handler.handle_error(err);
-                    self.recv.resync();
-                },
-                None => {},
-            },
-            DecodeCCFrameGroup(ref mut fg) => match fg.feed(dibit) {
-                Some(Ok(event)) => match event {
-                    FrameGroupEvent::VoiceFrame(vf) => {
-                        handler.handle_frame(vf);
-
-                        if fg.done() {
-                            self.recv.flush_pads();
-                        }
-                    },
-                    FrameGroupEvent::Extra(cc) => handler.handle_cc(cc),
-                    FrameGroupEvent::DataFragment(data) => handler.handle_data_frag(data),
-                },
-                Some(Err(err)) => {
-                    handler.handle_error(err);
-                    self.recv.resync();
-                },
-                None => {},
-            },
-            DecodeLCTerminator(ref mut term) => match term.feed(dibit) {
-                Some(Ok(lc)) => {
-                    handler.handle_lc(lc);
-                    handler.handle_term();
-                    self.recv.flush_pads();
-                },
-                Some(Err(err)) => {
-                    handler.handle_error(err);
-                    self.recv.resync();
-                },
-                None => {},
-            },
-            DecodeTSBK(ref mut dec) => match dec.feed(dibit) {
-                Some(Ok(tsbk)) => {
-                    handler.handle_tsbk(tsbk);
-
-                    if tsbk.is_tail() {
-                        self.recv.flush_pads();
-                    }
-                },
-                Some(Err(err)) => {
-                    handler.handle_error(err);
-                    self.recv.resync();
-                },
-                None => {},
-            },
-            Idle => {},
-        }
-    }
-}
-
-enum MessageReceiverState {
-    Idle,
-    DecodeHeader(VoiceHeaderReceiver),
-    DecodeLCFrameGroup(VoiceLCFrameGroupReceiver),
-    DecodeCCFrameGroup(VoiceCCFrameGroupReceiver),
-    DecodeLCTerminator(VoiceLCTerminatorReceiver),
-    DecodeTSBK(TSBKReceiver),
 }
 
 fn set_affinity(cpu: usize) {
