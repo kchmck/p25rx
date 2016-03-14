@@ -16,6 +16,7 @@ p25 = {version = "1.0.0", path = "../p25"}
 pool = {version = "0.1.3", path = "../pool"}
 prctl = {version = "1.0.0", path = "../prctl-rs"}
 rand = "0.3.13"
+rtlsdr_iq = {version = "1.0.0", path = "../rtlsdr_iq"}
 rtlsdr = {version = "1.0.0", path = "../rtlsdr"}
 sigpower = {version = "1.0.0", path = "../sigpower"}
 throttle = {version = "1.0.0", path = "../throttle"}

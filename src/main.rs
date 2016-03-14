@@ -8,6 +8,7 @@ extern crate p25;
 extern crate pool;
 extern crate prctl;
 extern crate rtlsdr;
+extern crate rtlsdr_iq;
 extern crate sigpower;
 extern crate throttle;
 extern crate ui;
@@ -55,7 +56,6 @@ use ui::rotary::{RotaryDecoder, Rotation};
 use xdg_basedir::dirs;
 
 mod filters;
-mod iq;
 
 use filters::{DecimFIR, BandpassFIR};
 
@@ -432,7 +432,7 @@ impl Demod {
             unsafe { samples.set_len(BUF_SIZE / 2); }
 
             pairs.iter()
-                 .map(|&s| unsafe { *iq::IQ.get_unchecked(s as usize) })
+                 .map(|&s| unsafe { *rtlsdr_iq::IQ.get_unchecked(s as usize) })
                  .collect_slice(&mut samples[..]);
 
             let len = self.decim.decim_in_place(&mut samples[..]);
