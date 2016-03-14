@@ -344,13 +344,9 @@ impl MainApp {
 
     pub fn run(&mut self) {
         loop {
-            match self.events.recv() {
-                Ok(event) => {
-                    self.handle(event);
-                    self.redraw();
-                },
-                Err(_) => break,
-            }
+            let event = self.events.recv().expect("unable to receive UI event");
+            self.handle(event);
+            self.redraw();
         }
     }
 
@@ -511,12 +507,11 @@ impl Controller {
 
     pub fn run(&mut self) {
         loop {
-            match self.events.recv() {
-                Ok(ControllerEvent::SetFreq(freq)) =>
+            match self.events.recv().expect("unable to receive controller event") {
+                ControllerEvent::SetFreq(freq) =>
                     assert!(self.sdr.set_center_freq(freq)),
-                Ok(ControllerEvent::SetGain(gain)) =>
+                ControllerEvent::SetGain(gain) =>
                     assert!(self.sdr.set_tuner_gain(gain)),
-                Err(_) => break,
             }
         }
     }
@@ -574,9 +569,7 @@ impl P25Receiver {
         let mut messages = MessageReceiver::new();
 
         loop {
-            let event = self.events.recv().expect("unable to receive baseband");
-
-            match event {
+            match self.events.recv().expect("unable to receive baseband") {
                 ReceiverEvent::Baseband(samples) => {
                     for &s in samples.iter() {
                         messages.feed(s, self);
@@ -675,29 +668,22 @@ impl Audio {
         }
     }
 
-    fn handle(&mut self, event: AudioEvent) {
-        match event {
-            AudioEvent::VoiceFrame(vf) => {
-                let frame = CAIFrame::new(vf.chunks, vf.errors);
-
-                let mut samples = [0.0; imbe::consts::SAMPLES];
-                self.imbe.decode(frame, &mut samples);
-                samples.map_in_place(|&s| s / 8192.0);
-
-                self.out.write_all(unsafe {
-                    std::slice::from_raw_parts(samples.as_ptr() as *const u8,
-                        samples.len() * 4)
-                }).unwrap();
-            },
-            AudioEvent::EndTransmission => self.out.flush().unwrap(),
-        }
-    }
-
     pub fn run(&mut self) {
         loop {
-            match self.queue.recv() {
-                Ok(event) => self.handle(event),
-                Err(_) => {},
+            match self.queue.recv().expect("unable to receive audio event") {
+                AudioEvent::VoiceFrame(vf) => {
+                    let frame = CAIFrame::new(vf.chunks, vf.errors);
+
+                    let mut samples = [0.0; imbe::consts::SAMPLES];
+                    self.imbe.decode(frame, &mut samples);
+                    samples.map_in_place(|&s| s / 8192.0);
+
+                    self.out.write_all(unsafe {
+                        std::slice::from_raw_parts(samples.as_ptr() as *const u8,
+                            samples.len() * 4)
+                    }).unwrap();
+                },
+                AudioEvent::EndTransmission => self.out.flush().unwrap(),
             }
         }
     }
