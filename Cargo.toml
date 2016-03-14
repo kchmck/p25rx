@@ -1,5 +1,5 @@
 [package]
-name = "recv-p25"
+name = "pi25"
 version = "1.0.0"
 authors = ["Mick Koch <mick@kochm.co>"]
 
