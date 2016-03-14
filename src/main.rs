@@ -1,6 +1,5 @@
 extern crate cfg;
 extern crate collect_slice;
-extern crate throttle;
 extern crate imbe;
 extern crate libc;
 extern crate map_in_place;
@@ -10,6 +9,7 @@ extern crate pool;
 extern crate prctl;
 extern crate rtlsdr;
 extern crate sigpower;
+extern crate throttle;
 extern crate ui;
 extern crate xdg_basedir;
 

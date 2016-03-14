@@ -5,13 +5,9 @@ authors = ["Mick Koch <mick@kochm.co>"]
 
 [dependencies]
 
-arrayvec = "0.3.12"
-byteorder = "0.3.13"
-byteorder_iter = {version = "1.0.0", path = "../byteorder_iter"}
 cfg = {version = "1.0.0", path = "../cfg"}
 collect_slice = "1.0.0"
 dsp = {version = "1.0.0", path = "../dsp"}
-throttle = {version = "1.0.0", path = "../throttle"}
 imbe = {version = "1.0.0", path = "../imbe"}
 libc = "0.2.8"
 map_in_place = {version = "1.0.0", path = "../map_in_place"}
@@ -22,11 +18,6 @@ prctl = {version = "1.0.0", path = "../prctl-rs"}
 rand = "0.3.13"
 rtlsdr = {version = "1.0.0", path = "../rtlsdr"}
 sigpower = {version = "1.0.0", path = "../sigpower"}
+throttle = {version = "1.0.0", path = "../throttle"}
 ui = {version = "1.0.0", path = "../ui"}
 xdg-basedir = "0.2.2"
-
-[[bin]]
-name = "recv"
-
-[[bin]]
-name = "sdr"
