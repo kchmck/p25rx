@@ -703,7 +703,7 @@ fn main() {
     assert!(control.reset_buf());
 
     let mut conf = dirs::get_config_home().unwrap();
-    conf.push("recv-p25");
+    conf.push("pi25");
 
     let talkgroups = {
         let mut conf = conf.clone();
