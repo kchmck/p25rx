@@ -97,6 +97,8 @@ enum View {
     AdjustGain,
     SettingSite,
     AdjustSite,
+    SettingDisplay,
+    DisplayOff,
     Poweroff,
 }
 
@@ -111,7 +113,8 @@ impl View {
         match self {
             Main => SettingGain,
             SettingGain => SettingSite,
-            SettingSite => Poweroff,
+            SettingSite => SettingDisplay,
+            SettingDisplay => Poweroff,
             Poweroff => Main,
             _ => unreachable!(),
         }
@@ -124,7 +127,8 @@ impl View {
             Main => Poweroff,
             SettingGain => Main,
             SettingSite => SettingGain,
-            Poweroff => SettingSite,
+            SettingDisplay => SettingSite,
+            Poweroff => SettingDisplay,
             _ => unreachable!(),
         }
     }
@@ -239,15 +243,20 @@ impl MainApp {
     }
 
     pub fn redraw(&mut self) {
-        let mut top = [b' '; ui::lcd::COLS as usize];
-        let mut bot = [b' '; ui::lcd::COLS as usize];
+        match self.state.view {
+            View::DisplayOff => {},
+            _ => {
+                let mut top = [b' '; ui::lcd::COLS as usize];
+                let mut bot = [b' '; ui::lcd::COLS as usize];
 
-        self.draw(&mut top[..], &mut bot[..]);
+                self.draw(&mut top[..], &mut bot[..]);
 
-        self.lcd.cursor(0, 0);
-        self.lcd.message(&mut top[..]);
-        self.lcd.cursor(1, 0);
-        self.lcd.message(&mut bot[..]);
+                self.lcd.cursor(0, 0);
+                self.lcd.message(&mut top[..]);
+                self.lcd.cursor(1, 0);
+                self.lcd.message(&mut bot[..]);
+            },
+        }
     }
 
     fn draw(&self, mut top: &mut [u8], mut bot: &mut [u8]) {
@@ -280,7 +289,9 @@ impl MainApp {
             View::AdjustGain => self.draw_gain(top, bot, '\x7e'),
             View::SettingSite => self.draw_site(top, bot, ' '),
             View::AdjustSite => self.draw_site(top, bot, '\x7e'),
+            View::SettingDisplay => write!(top, "Display Off?").unwrap(),
             View::Poweroff => write!(top, "Poweroff?").unwrap(),
+            _ => unreachable!(),
         }
     }
 
@@ -361,6 +372,7 @@ impl MainApp {
                 },
                 AdjustGain => self.state.increase_gain(),
                 AdjustSite => self.state.next_site(),
+                DisplayOff => {},
                 _ => self.state.view = self.state.view.next(),
             },
             UIEvent::Rotation(Rotation::CounterClockwise) => match self.state.view {
@@ -370,6 +382,7 @@ impl MainApp {
                 },
                 AdjustGain =>self.state.decrease_gain(),
                 AdjustSite => self.state.prev_site(),
+                DisplayOff => {},
                 _ => self.state.view = self.state.view.prev(),
             },
             UIEvent::ButtonPress => match self.state.view {
@@ -381,6 +394,16 @@ impl MainApp {
                 AdjustSite => {
                     self.commit_site();
                     self.state.view = self.state.view.select();
+                },
+                SettingDisplay => {
+                    self.lcd.backlight_off();
+                    self.lcd.display_off();
+                    self.state.view = DisplayOff;
+                },
+                DisplayOff => {
+                    self.lcd.display_on();
+                    self.lcd.backlight_on();
+                    self.state.view = SettingDisplay;
                 },
                 _ => self.state.view = self.state.view.select(),
             },
