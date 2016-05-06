@@ -23,7 +23,7 @@ use std::fs::OpenOptions;
 use std::io::{BufWriter, Read, Write};
 use std::process::Command;
 use std::sync::Arc;
-use std::sync::mpsc::{channel, sync_channel, Sender, SyncSender, Receiver};
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::thread;
 
 use cfg::sites::{parse_sites, P25Sites};
@@ -192,8 +192,8 @@ struct MainApp {
     state: AppState,
     talkgroups: TalkGroups,
     events: Receiver<UIEvent>,
-    sdr: SyncSender<ControllerEvent>,
-    recv: SyncSender<ReceiverEvent>,
+    sdr: Sender<ControllerEvent>,
+    recv: Sender<ReceiverEvent>,
 }
 
 impl MainApp {
@@ -201,8 +201,8 @@ impl MainApp {
                sites: Arc<P25Sites>,
                gains: (TunerGains, usize),
                events: Receiver<UIEvent>,
-               sdr: SyncSender<ControllerEvent>,
-               recv: SyncSender<ReceiverEvent>)
+               sdr: Sender<ControllerEvent>,
+               recv: Sender<ReceiverEvent>)
         -> MainApp
     {
         MainApp {
@@ -419,14 +419,14 @@ struct Demod {
     bandpass: FIRFilter<BandpassFIR>,
     demod: FMDemod,
     reader: Receiver<Checkout<Vec<u8>>>,
-    ui: SyncSender<UIEvent>,
-    chan: SyncSender<ReceiverEvent>,
+    ui: Sender<UIEvent>,
+    chan: Sender<ReceiverEvent>,
 }
 
 impl Demod {
     pub fn new(reader: Receiver<Checkout<Vec<u8>>>,
-               ui: SyncSender<UIEvent>,
-               chan: SyncSender<ReceiverEvent>)
+               ui: Sender<UIEvent>,
+               chan: Sender<ReceiverEvent>)
         -> Demod
     {
         Demod {
@@ -489,11 +489,11 @@ impl Demod {
 }
 
 struct Radio {
-    chan: SyncSender<Checkout<Vec<u8>>>,
+    chan: Sender<Checkout<Vec<u8>>>,
 }
 
 impl Radio {
-    pub fn new(chan: SyncSender<Checkout<Vec<u8>>>) -> Radio {
+    pub fn new(chan: Sender<Checkout<Vec<u8>>>) -> Radio {
         Radio {
             chan: chan,
         }
@@ -549,16 +549,16 @@ struct P25Receiver {
     sites: Arc<P25Sites>,
     site: usize,
     events: Receiver<ReceiverEvent>,
-    ui: SyncSender<UIEvent>,
-    sdr: SyncSender<ControllerEvent>,
+    ui: Sender<UIEvent>,
+    sdr: Sender<ControllerEvent>,
     audio: Sender<AudioEvent>,
 }
 
 impl P25Receiver {
     pub fn new(sites: Arc<P25Sites>,
                events: Receiver<ReceiverEvent>,
-               ui: SyncSender<UIEvent>,
-               sdr: SyncSender<ControllerEvent>,
+               ui: Sender<UIEvent>,
+               sdr: Sender<ControllerEvent>,
                audio: Sender<AudioEvent>)
         -> P25Receiver
     {
@@ -749,10 +749,10 @@ fn main() {
         return;
     }
 
-    let (tx_ui_ev, rx_ui_ev) = sync_channel(64);
-    let (tx_ctl_ev, rx_ctl_ev) = sync_channel(16);
-    let (tx_recv_ev, rx_recv_ev) = sync_channel(64);
-    let (tx_sdr_samp, rx_sdr_samp) = sync_channel(64);
+    let (tx_ui_ev, rx_ui_ev) = channel();
+    let (tx_ctl_ev, rx_ctl_ev) = channel();
+    let (tx_recv_ev, rx_recv_ev) = channel();
+    let (tx_sdr_samp, rx_sdr_samp) = channel();
     let (tx_aud_ev, rx_aud_ev) = channel();
 
     let mut app = MainApp::new(talkgroups, sites.clone(), gains, rx_ui_ev,
