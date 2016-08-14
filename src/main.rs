@@ -35,7 +35,7 @@ mod ui;
 mod consts;
 
 use audio::Audio;
-use consts::SAMPLE_RATE;
+use consts::SDR_SAMPLE_RATE;
 use demod::Demod;
 use recv::P25Receiver;
 use sdr::{Radio, Controller};
@@ -50,7 +50,7 @@ fn main() {
         (gains, ngains)
     };
 
-    assert!(control.set_sample_rate(SAMPLE_RATE));
+    assert!(control.set_sample_rate(SDR_SAMPLE_RATE));
     assert!(control.set_ppm(-2));
     assert!(control.reset_buf());
 
