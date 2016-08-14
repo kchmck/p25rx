@@ -11,13 +11,11 @@ extern crate rtlsdr;
 extern crate rtlsdr_iq;
 extern crate sigpower;
 extern crate throttle;
-extern crate ui;
 extern crate xdg_basedir;
 
 #[macro_use]
 extern crate dsp;
 
-use std::cmp::{min, max};
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Read, Write};
@@ -50,9 +48,6 @@ use rtlsdr::{Control, Reader, TunerGains};
 use sigpower::power;
 use sigpower::smeter::SignalLevel;
 use throttle::Throttler;
-use ui::button::Button;
-use ui::lcd::LCD;
-use ui::rotary::{RotaryDecoder, Rotation};
 use xdg_basedir::dirs;
 
 mod filters;
@@ -62,15 +57,14 @@ use filters::{DecimFIR, BandpassFIR};
 const BUF_COUNT: usize = 16;
 const BUF_SIZE: usize = 32768;
 
-const MIN_VOL: usize = 80;
-const MAX_VOL: usize = 100;
-const VOL_STEP: usize = 1;
-
 const SAMPLE_RATE: u32 = 240_000;
 const BASEBAND_SAMPLE_RATE: u32 = 48000;
 const FM_DEV: u32 = 5000;
 
 const IMBE_FILE: &'static str = "imbe.fifo";
+
+const MIN_VOL: usize = 80;
+const MAX_VOL: usize = 100;
 
 const DEFAULT_SITE: usize = 0;
 
@@ -82,76 +76,14 @@ impl DecimationFactor for Decimate5 {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum UIEvent {
-    Rotation(Rotation),
-    ButtonPress,
     SetTalkGroup(TalkGroup),
     SetSignalLevel(SignalLevel),
     SetFreq(u32),
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-enum View {
-    Main,
-    Volume,
-    SettingGain,
-    AdjustGain,
-    SettingSite,
-    AdjustSite,
-    SettingDisplay,
-    DisplayOff,
-    Poweroff,
-}
-
-impl Default for View {
-    fn default() -> Self { View::Main }
-}
-
-impl View {
-    pub fn next(self) -> View {
-        use self::View::*;
-
-        match self {
-            Main => SettingGain,
-            SettingGain => SettingSite,
-            SettingSite => SettingDisplay,
-            SettingDisplay => Poweroff,
-            Poweroff => Main,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn prev(self) -> View {
-        use self::View::*;
-
-        match self {
-            Main => Poweroff,
-            SettingGain => Main,
-            SettingSite => SettingGain,
-            SettingDisplay => SettingSite,
-            Poweroff => SettingDisplay,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn select(self) -> View {
-        use self::View::*;
-
-        match self {
-            Main => Volume,
-            Volume => Main,
-            SettingGain => AdjustGain,
-            AdjustGain => SettingGain,
-            SettingSite => AdjustSite,
-            AdjustSite => SettingSite,
-            _ => unreachable!(),
-        }
-    }
-}
-
 struct AppState {
     pub gains: (TunerGains, usize),
     pub sites: Arc<P25Sites>,
-    pub view: View,
     pub volume: usize,
     /// Index into gains array.
     pub gain: usize,
@@ -161,34 +93,7 @@ struct AppState {
     pub signal: SignalLevel,
 }
 
-impl AppState {
-    pub fn increase_volume(&mut self) {
-        self.volume = min(self.volume + VOL_STEP, MAX_VOL);
-    }
-
-    pub fn decrease_volume(&mut self) {
-        self.volume = max(self.volume.saturating_sub(VOL_STEP), MIN_VOL);
-    }
-
-    pub fn increase_gain(&mut self) {
-        self.gain = min(self.gain + 1, self.gains.1 - 1);
-    }
-
-    pub fn decrease_gain(&mut self) {
-        self.gain = self.gain.saturating_sub(1);
-    }
-
-    pub fn next_site(&mut self) {
-        self.site = min(self.site + 1, self.sites.len() - 1);
-    }
-
-    pub fn prev_site(&mut self) {
-        self.site = self.site.saturating_sub(1);
-    }
-}
-
 struct MainApp {
-    lcd: LCD,
     state: AppState,
     talkgroups: TalkGroups,
     events: Receiver<UIEvent>,
@@ -206,11 +111,9 @@ impl MainApp {
         -> MainApp
     {
         MainApp {
-            lcd: LCD::new(),
             state: AppState {
                 gains: gains,
                 sites: sites,
-                view: View::default(),
                 volume: (MAX_VOL + MIN_VOL) / 2,
                 gain: gains.1 - 1,
                 site: DEFAULT_SITE,
@@ -230,96 +133,10 @@ impl MainApp {
         self.commit_site();
         self.commit_volume();
 
-        self.lcd.backlight_on();
-        self.lcd.create_char(0, [ 0,  0,  0,  0,  0,  0,  0, 31]);
-        self.lcd.create_char(1, [ 0,  0,  0,  0,  0, 31, 31, 31]);
-        self.lcd.create_char(2, [ 0,  0,  0, 31, 31, 31, 31, 31]);
-        self.lcd.create_char(3, [ 0, 31, 31, 31, 31, 31, 31, 31]);
-        self.lcd.create_char(4, [31, 31, 31, 31, 31, 31, 31, 31]);
-
-        self.redraw();
-
         self
     }
 
-    pub fn redraw(&mut self) {
-        match self.state.view {
-            View::DisplayOff => {},
-            _ => {
-                let mut top = [b' '; ui::lcd::COLS as usize];
-                let mut bot = [b' '; ui::lcd::COLS as usize];
-
-                self.draw(&mut top[..], &mut bot[..]);
-
-                self.lcd.cursor(0, 0);
-                self.lcd.message(&mut top[..]);
-                self.lcd.cursor(1, 0);
-                self.lcd.message(&mut bot[..]);
-            },
-        }
-    }
-
-    fn draw(&self, mut top: &mut [u8], mut bot: &mut [u8]) {
-        match self.state.view {
-            View::Main => {
-                match self.state.talkgroup {
-                    TalkGroup::Nobody => write!(top, "(Nobody)"),
-                    TalkGroup::Default => write!(top, "(Default)"),
-                    TalkGroup::Everbody => write!(top, "(Everybody)"),
-                    TalkGroup::Other(tg) => match self.talkgroups.get(&tg) {
-                        Some(s) => write!(top, "{}", s),
-                        None => write!(top, "(0x{:04X})", tg),
-                    },
-                }.unwrap();
-
-                let mut cursor = std::io::Cursor::new(bot);
-                write!(cursor, "{: <13} S", self.state.freq).unwrap();
-
-                match self.state.signal {
-                    SignalLevel::Plus(_) => write!(cursor, "+"),
-                    SignalLevel::Level(l) => write!(cursor, "{}", l),
-                    SignalLevel::None => write!(cursor, "-"),
-                }.unwrap()
-            },
-            View::Volume => {
-                write!(top, "Volume").unwrap();
-                self.draw_volume(bot);
-            },
-            View::SettingGain => self.draw_gain(top, bot, ' '),
-            View::AdjustGain => self.draw_gain(top, bot, '\x7e'),
-            View::SettingSite => self.draw_site(top, bot, ' '),
-            View::AdjustSite => self.draw_site(top, bot, '\x7e'),
-            View::SettingDisplay => write!(top, "Display Off?").unwrap(),
-            View::Poweroff => write!(top, "Poweroff?").unwrap(),
-            _ => unreachable!(),
-        }
-    }
-
-    fn draw_gain(&self, mut top: &mut [u8], mut bot: &mut [u8], prefix: char) {
-        write!(top, "Tuner Gain").unwrap();
-        write!(bot, "{}{: >13.1}dB", prefix,
-            self.state.gains.0[self.state.gain] as f32 / 10.0).unwrap();
-    }
-
-    fn draw_site(&self, mut top: &mut [u8], mut bot: &mut [u8], prefix: char) {
-        write!(top, "Site").unwrap();
-        write!(bot, "{}{:>15}", prefix, self.state.sites[self.state.site].name).unwrap();
-    }
-
-    fn draw_volume(&self, buf: &mut [u8]) {
-        const MAP: [u8; 4] = [b'\x00', b'\x01', b'\x02', b'\x03'];
-        const FULL: u8 = b'\x04';
-
-        let bars = 1 + (self.state.volume - MIN_VOL) *
-            (ui::lcd::COLS as usize - 1) / (MAX_VOL - MIN_VOL);
-        let mut cursor = std::io::Cursor::new(buf);
-
-        cursor.write_all(&MAP[..min(MAP.len(), bars)]).unwrap();
-
-        for _ in MAP.len()..bars as usize {
-            cursor.write_all(&[FULL]).unwrap();
-        }
-    }
+    pub fn redraw(&mut self) {}
 
     fn commit_volume(&self) {
         assert!(Command::new("amixer")
@@ -342,9 +159,6 @@ impl MainApp {
     }
 
     fn poweroff(&mut self) {
-        self.lcd.clear();
-        self.lcd.backlight_off();
-
         assert!(Command::new("sudo")
                         .arg("systemctl")
                         .arg("poweroff")
@@ -362,51 +176,7 @@ impl MainApp {
     }
 
     fn handle(&mut self, event: UIEvent) {
-        use self::View::*;
-
         match event {
-            UIEvent::Rotation(Rotation::Clockwise) => match self.state.view {
-                Volume => {
-                    self.state.increase_volume();
-                    self.commit_volume();
-                },
-                AdjustGain => self.state.increase_gain(),
-                AdjustSite => self.state.next_site(),
-                DisplayOff => {},
-                _ => self.state.view = self.state.view.next(),
-            },
-            UIEvent::Rotation(Rotation::CounterClockwise) => match self.state.view {
-                Volume => {
-                    self.state.decrease_volume();
-                    self.commit_volume();
-                },
-                AdjustGain =>self.state.decrease_gain(),
-                AdjustSite => self.state.prev_site(),
-                DisplayOff => {},
-                _ => self.state.view = self.state.view.prev(),
-            },
-            UIEvent::ButtonPress => match self.state.view {
-                Poweroff => self.poweroff(),
-                AdjustGain => {
-                    self.commit_gain();
-                    self.state.view = self.state.view.select();
-                },
-                AdjustSite => {
-                    self.commit_site();
-                    self.state.view = self.state.view.select();
-                },
-                SettingDisplay => {
-                    self.lcd.backlight_off();
-                    self.lcd.display_off();
-                    self.state.view = DisplayOff;
-                },
-                DisplayOff => {
-                    self.lcd.display_on();
-                    self.lcd.backlight_on();
-                    self.state.view = SettingDisplay;
-                },
-                _ => self.state.view = self.state.view.select(),
-            },
             UIEvent::SetTalkGroup(tg) => self.state.talkgroup = tg,
             UIEvent::SetSignalLevel(s) => self.state.signal = s,
             UIEvent::SetFreq(freq) =>  self.state.freq = freq,
@@ -764,12 +534,6 @@ fn main() {
     let mut receiver = P25Receiver::new(sites.clone(), rx_recv_ev, tx_ui_ev.clone(),
         tx_ctl_ev.clone(), tx_aud_ev.clone());
 
-    let mut rotary = RotaryDecoder::new();
-    let tx_rotary = tx_ui_ev.clone();
-
-    let mut button = Button::new();
-    let tx_button = tx_ui_ev.clone();
-
     thread::spawn(move || {
         prctl::set_name("controller").unwrap();
         controller.run()
@@ -796,24 +560,6 @@ fn main() {
         set_affinity(2);
         prctl::set_name("receiver").unwrap();
         receiver.run();
-    });
-
-    thread::spawn(move || {
-        prctl::set_name("rotary").unwrap();
-
-        rotary.run(|rot| {
-            tx_rotary.send(UIEvent::Rotation(rot))
-                .expect("unable to send rotary event");
-        });
-    });
-
-    thread::spawn(move || {
-        prctl::set_name("button").unwrap();
-
-        button.run(|| {
-            tx_button.send(UIEvent::ButtonPress)
-                .expect("unable to send button press event");
-        });
     });
 
     thread::spawn(move || {

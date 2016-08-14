@@ -17,7 +17,6 @@ dependencies = [
  "rtlsdr_iq 1.0.0",
  "sigpower 1.0.0",
  "throttle 1.0.0",
- "ui 1.0.0",
  "xdg-basedir 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -32,17 +31,7 @@ dependencies = [
 
 [[package]]
 name = "bitflags"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "bitflags"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "byteorder"
-version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -90,16 +79,6 @@ name = "ewma"
 version = "1.0.0"
 
 [[package]]
-name = "i2cdev"
-version = "0.2.1"
-dependencies = [
- "bitflags 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "byteorder 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
- "nix 0.5.1-pre (git+https://github.com/carllerche/nix-rust?rev=2c87f5a)",
-]
-
-[[package]]
 name = "imbe"
 version = "1.0.0"
 dependencies = [
@@ -122,12 +101,15 @@ version = "1.0.0"
 
 [[package]]
 name = "nix"
-version = "0.5.1-pre"
-source = "git+https://github.com/carllerche/nix-rust?rev=2c87f5a#2c87f5a1be5b9eb2b57da20bc6061b0ae4230bfb"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cfg-if 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc_version 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "semver 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
+ "void 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -233,7 +215,7 @@ name = "prctl"
 version = "1.0.0"
 dependencies = [
  "libc 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
- "nix 0.5.1-pre (git+https://github.com/carllerche/nix-rust?rev=2c87f5a)",
+ "nix 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -277,6 +259,19 @@ version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "rustc_version"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "semver 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "semver"
+version = "0.1.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "sigpower"
 version = "1.0.0"
 dependencies = [
@@ -301,12 +296,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "ui"
-version = "1.0.0"
-dependencies = [
- "i2cdev 0.2.1",
- "libc 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
-]
+name = "void"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "xdg-basedir"
