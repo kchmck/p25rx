@@ -16,14 +16,6 @@ extern crate xdg_basedir;
 #[macro_use]
 extern crate dsp;
 
-use std::fs::File;
-use std::fs::OpenOptions;
-use std::io::{BufWriter, Read, Write};
-use std::process::Command;
-use std::sync::Arc;
-use std::sync::mpsc::{channel, Sender, Receiver};
-use std::thread;
-
 use cfg::sites::{parse_sites, P25Sites};
 use cfg::talkgroups::{parse_talkgroups, TalkGroups};
 use collect_slice::CollectSlice;
@@ -35,6 +27,7 @@ use map_in_place::MapInPlace;
 use num::complex::Complex32;
 use num::traits::Zero;
 use p25::error::P25Error;
+use p25::message::{MessageReceiver, MessageHandler};
 use p25::nid::NetworkID;
 use p25::trunking::decode::TalkGroup;
 use p25::trunking::tsbk::{self, TSBKFields, TSBKOpcode};
@@ -42,11 +35,17 @@ use p25::voice::control::LinkControlFields;
 use p25::voice::crypto::CryptoControlFields;
 use p25::voice::frame::VoiceFrame;
 use p25::voice::header::VoiceHeaderFields;
-use p25::message::{MessageReceiver, MessageHandler};
 use pool::{Pool, Checkout};
 use rtlsdr::{Control, Reader, TunerGains};
 use sigpower::power;
 use sigpower::smeter::SignalLevel;
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::{BufWriter, Read, Write};
+use std::process::Command;
+use std::sync::Arc;
+use std::sync::mpsc::{channel, Sender, Receiver};
+use std::thread;
 use throttle::Throttler;
 use xdg_basedir::dirs;
 
