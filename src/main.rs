@@ -111,14 +111,14 @@ fn main() {
     });
 
     thread::spawn(move || {
-        prctl::set_name("audio").unwrap();
-        audio.run();
-    });
-
-    thread::spawn(move || {
         set_affinity(2);
         prctl::set_name("receiver").unwrap();
         receiver.run();
+    });
+
+    thread::spawn(move || {
+        prctl::set_name("audio").unwrap();
+        audio.run();
     });
 
     thread::spawn(move || {
