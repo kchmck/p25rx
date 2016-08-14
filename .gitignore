@@ -1,5 +1,4 @@
 target
-Cargo.lock
 *.s16le
 *.f32le
 *.wav
