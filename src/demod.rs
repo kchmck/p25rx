@@ -13,7 +13,7 @@ use std::sync::mpsc::{Sender, Receiver};
 use std;
 use throttle::Throttler;
 
-use filters::{DecimFIR, BandpassFIR};
+use p25_filts::{DecimFIR, BandpassFIR};
 use ui::UIEvent;
 use recv::ReceiverEvent;
 use consts::{BUF_SIZE_COMPLEX, BASEBAND_SAMPLE_RATE};

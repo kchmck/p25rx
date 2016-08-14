@@ -10,6 +10,7 @@ dependencies = [
  "map_in_place 1.0.0",
  "num 0.1.34 (registry+https://github.com/rust-lang/crates.io-index)",
  "p25 1.0.0",
+ "p25_filts 1.0.0",
  "pool 0.1.3",
  "prctl 1.0.0",
  "rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -198,6 +199,14 @@ dependencies = [
  "collect_slice 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "dsp 1.0.0",
  "ewma 1.0.0",
+ "num 0.1.34 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "p25_filts"
+version = "1.0.0"
+dependencies = [
+ "dsp 1.0.0",
  "num 0.1.34 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

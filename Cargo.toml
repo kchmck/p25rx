@@ -13,6 +13,7 @@ libc = "^0.2.8"
 map_in_place = {version = "^1.0.0", path = "../map_in_place"}
 num = "^0.1.34"
 p25 = {version = "^1.0.0", path = "../p25"}
+p25_filts = {version = "^1.0.0", path = "../p25_filts"}
 pool = {version = "^0.1.3", path = "../pool"}
 prctl = {version = "^1.0.0", path = "../prctl-rs"}
 rand = "^0.3.13"

@@ -5,6 +5,7 @@ extern crate libc;
 extern crate map_in_place;
 extern crate num;
 extern crate p25;
+extern crate p25_filts;
 extern crate pool;
 extern crate prctl;
 extern crate rtlsdr;
@@ -27,7 +28,6 @@ use xdg_basedir::dirs;
 
 mod audio;
 mod demod;
-mod filters;
 mod recv;
 mod sdr;
 mod ui;
