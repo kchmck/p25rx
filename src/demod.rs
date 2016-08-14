@@ -16,7 +16,7 @@ use throttle::Throttler;
 use filters::{DecimFIR, BandpassFIR};
 use ui::UIEvent;
 use recv::ReceiverEvent;
-use consts::{BUF_SIZE, BASEBAND_SAMPLE_RATE};
+use consts::{BUF_SIZE_RAW, BASEBAND_SAMPLE_RATE};
 
 const FM_DEV: u32 = 5000;
 
@@ -46,8 +46,8 @@ impl Demod {
     }
 
     pub fn run(&mut self) {
-        let mut pool = Pool::with_capacity(16, || vec![0.0; BUF_SIZE / 2]);
-        let mut samples = vec![Complex32::zero(); BUF_SIZE / 2];
+        let mut pool = Pool::with_capacity(16, || vec![0.0; BUF_SIZE_RAW / 2]);
+        let mut samples = vec![Complex32::zero(); BUF_SIZE_RAW / 2];
 
         let mut notifier = Throttler::new(16);
 
@@ -55,10 +55,10 @@ impl Demod {
             let bytes = self.reader.recv().expect("unable to receive sdr samples");
 
             let pairs = unsafe {
-                std::slice::from_raw_parts(bytes.as_ptr() as *const u16, BUF_SIZE / 2)
+                std::slice::from_raw_parts(bytes.as_ptr() as *const u16, BUF_SIZE_RAW / 2)
             };
 
-            unsafe { samples.set_len(BUF_SIZE / 2); }
+            unsafe { samples.set_len(BUF_SIZE_RAW / 2); }
 
             pairs.iter()
                  .map(|&s| unsafe { *IQ.get_unchecked(s as usize) })

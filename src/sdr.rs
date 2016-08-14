@@ -3,7 +3,7 @@ use pool::{Pool, Checkout};
 use rtlsdr::{Control, Reader};
 use std::io::Write;
 
-use consts::{BUF_SIZE, BUF_COUNT};
+use consts::{BUF_SIZE_RAW, BUF_COUNT};
 
 pub struct Radio {
     chan: Sender<Checkout<Vec<u8>>>,
@@ -17,9 +17,9 @@ impl Radio {
     }
 
     pub fn run(&mut self, mut reader: Reader) {
-        let mut pool = Pool::with_capacity(16, || vec![0; BUF_SIZE]);
+        let mut pool = Pool::with_capacity(16, || vec![0; BUF_SIZE_RAW]);
 
-        reader.read_async(BUF_COUNT as u32, BUF_SIZE as u32, |bytes| {
+        reader.read_async(BUF_COUNT as u32, BUF_SIZE_RAW as u32, |bytes| {
             let mut samples = pool.checkout().expect("unable to allocate samples");
             (&mut samples[..]).write(bytes).unwrap();
             self.chan.send(samples).expect("unable to send sdr samples");
