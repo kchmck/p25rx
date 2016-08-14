@@ -29,7 +29,6 @@ impl Radio {
 
 pub enum ControllerEvent {
     SetFreq(u32),
-    SetGain(i32),
 }
 
 pub struct Controller {
@@ -50,8 +49,6 @@ impl Controller {
             match self.events.recv().expect("unable to receive controller event") {
                 ControllerEvent::SetFreq(freq) =>
                     assert!(self.sdr.set_center_freq(freq)),
-                ControllerEvent::SetGain(gain) =>
-                    assert!(self.sdr.set_tuner_gain(gain)),
             }
         }
     }

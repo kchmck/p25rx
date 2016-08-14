@@ -18,7 +18,6 @@ extern crate dsp;
 
 use cfg::sites::parse_sites;
 use cfg::talkgroups::parse_talkgroups;
-use rtlsdr::TunerGains;
 use std::fs::File;
 use std::io::Read;
 use std::sync::Arc;
@@ -44,14 +43,9 @@ use ui::MainApp;
 fn main() {
     let (mut control, reader) = rtlsdr::open(0).expect("unable to open rtlsdr");
 
-    let gains = {
-        let mut gains = TunerGains::default();
-        let ngains = control.get_tuner_gains(&mut gains);
-        (gains, ngains)
-    };
-
     assert!(control.set_sample_rate(SDR_SAMPLE_RATE));
     assert!(control.set_ppm(-2));
+    assert!(control.enable_agc());
     assert!(control.reset_buf());
 
     let mut conf = dirs::get_config_home().unwrap();
@@ -84,7 +78,7 @@ fn main() {
     let (tx_sdr_samp, rx_sdr_samp) = channel();
     let (tx_aud_ev, rx_aud_ev) = channel();
 
-    let mut app = MainApp::new(talkgroups, sites.clone(), gains, rx_ui_ev,
+    let mut app = MainApp::new(talkgroups, sites.clone(), rx_ui_ev,
         tx_ctl_ev.clone(), tx_recv_ev.clone());
     let mut controller = Controller::new(control, rx_ctl_ev);
     let mut radio = Radio::new(tx_sdr_samp);

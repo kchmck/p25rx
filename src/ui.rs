@@ -1,7 +1,6 @@
 use cfg::sites::P25Sites;
 use cfg::talkgroups::TalkGroups;
 use p25::trunking::decode::TalkGroup;
-use rtlsdr::TunerGains;
 use sigpower::smeter::SignalLevel;
 use std::process::Command;
 use std::sync::Arc;
@@ -22,11 +21,8 @@ pub enum UIEvent {
 }
 
 struct AppState {
-    pub gains: (TunerGains, usize),
     pub sites: Arc<P25Sites>,
     pub volume: usize,
-    /// Index into gains array.
-    pub gain: usize,
     pub site: usize,
     pub talkgroup: TalkGroup,
     pub freq: u32,
@@ -44,7 +40,6 @@ pub struct MainApp {
 impl MainApp {
     pub fn new(talkgroups: TalkGroups,
                sites: Arc<P25Sites>,
-               gains: (TunerGains, usize),
                events: Receiver<UIEvent>,
                sdr: Sender<ControllerEvent>,
                recv: Sender<ReceiverEvent>)
@@ -52,10 +47,8 @@ impl MainApp {
     {
         MainApp {
             state: AppState {
-                gains: gains,
                 sites: sites,
                 volume: (MAX_VOL + MIN_VOL) / 2,
-                gain: gains.1 - 1,
                 site: DEFAULT_SITE,
                 talkgroup: TalkGroup::Nobody,
                 freq: 0,
@@ -68,8 +61,7 @@ impl MainApp {
         }.init()
     }
 
-    fn init(mut self) -> Self {
-        self.commit_gain();
+    fn init(self) -> Self {
         self.commit_site();
         self.commit_volume();
 
@@ -91,11 +83,6 @@ impl MainApp {
     fn commit_site(&self) {
         self.recv.send(ReceiverEvent::SetSite(self.state.site))
             .expect("unable to commit site");
-    }
-
-    fn commit_gain(&mut self) {
-        self.sdr.send(ControllerEvent::SetGain(self.state.gains.0[self.state.gain]))
-            .expect("unable to commit gain");
     }
 
     fn poweroff(&mut self) {
