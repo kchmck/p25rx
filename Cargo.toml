@@ -20,4 +20,4 @@ rtlsdr = {version = "^1.0.0", path = "../rtlsdr"}
 rtlsdr_iq = {version = "^1.0.0", path = "../rtlsdr_iq"}
 sigpower = {version = "^1.0.0", path = "../sigpower"}
 throttle = {version = "^1.0.0", path = "../throttle"}
-xdg-basedir = "^0.2.2"
+xdg-basedir = "^1.0.0"
