@@ -20,6 +20,7 @@ use consts::{BUF_SIZE_COMPLEX, BASEBAND_SAMPLE_RATE};
 
 const FM_DEV: u32 = 5000;
 const POWER_ADJUST: f32 = -106.0;
+const IMPEDANCE: f32 = 50.0;
 
 pub struct Demod {
     decim: Decimator<Decimate5, DecimFIR>,
@@ -73,7 +74,7 @@ impl Demod {
             samples.map_in_place(|&s| self.bandpass.feed(s));
 
             let level = SignalLevel::from_dbm(
-                power::power_dbm(&samples[..], 50.0) + POWER_ADJUST);
+                power::power_dbm(&samples[..], IMPEDANCE) + POWER_ADJUST);
 
             notifier.throttle(|| {
                 self.ui.send(UIEvent::SetSignalLevel(level))
