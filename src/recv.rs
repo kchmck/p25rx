@@ -1,5 +1,5 @@
 use cfg::sites::P25Sites;
-use dsp::fir::FIRFilter;
+use static_fir::FIRFilter;
 use p25::error::P25Error;
 use p25::message::{MessageReceiver, MessageHandler};
 use p25::nid::NetworkID;

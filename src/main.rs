@@ -13,9 +13,11 @@ extern crate rtlsdr_iq;
 extern crate sigpower;
 extern crate throttle;
 extern crate xdg_basedir;
+extern crate static_decimate;
+extern crate demod_fm;
 
 #[macro_use]
-extern crate dsp;
+extern crate static_fir;
 
 use cfg::sites::parse_sites;
 use cfg::talkgroups::parse_talkgroups;

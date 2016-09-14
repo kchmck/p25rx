@@ -1,7 +1,7 @@
 use collect_slice::CollectSlice;
-use dsp::decim::{Decimator, DecimationFactor};
-use dsp::fir::FIRFilter;
-use dsp::fm::FMDemod;
+use static_decimate::{Decimator, DecimationFactor};
+use static_fir::FIRFilter;
+use demod_fm::FMDemod;
 use map_in_place::MapInPlace;
 use num::complex::Complex32;
 use num::traits::Zero;

@@ -7,7 +7,9 @@ authors = ["Mick Koch <mick@kochm.co>"]
 
 cfg = {version = "^1.0.0", path = "../cfg"}
 collect_slice = "^1.0.0"
-dsp = {version = "^1.0.0", path = "../dsp"}
+static_fir = {version = "^1.0.0", path = "../static_fir"}
+static_decimate = {version = "^1.0.0", path = "../static_decimate"}
+demod_fm = {version = "^1.0.0", path = "../demod_fm"}
 imbe = {version = "^1.0.0", path = "../imbe"}
 libc = "^0.2.8"
 map_in_place = {version = "^1.0.0", path = "../map_in_place"}
