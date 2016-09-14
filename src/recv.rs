@@ -1,5 +1,6 @@
 use p25::error::P25Error;
 use p25::message::{MessageReceiver, MessageHandler};
+use p25::nid::DataUnit;
 use p25::nid::NetworkID;
 use p25::receiver::DataUnitReceiver;
 use p25::trunking::decode::TalkGroup;
@@ -87,7 +88,18 @@ impl P25Receiver {
 
 impl MessageHandler for P25Receiver {
     fn handle_error(&mut self, _: &mut DataUnitReceiver, _: P25Error) {}
-    fn handle_nid(&mut self, _: &mut DataUnitReceiver, _: NetworkID) {}
+
+    fn handle_nid(&mut self, recv: &mut DataUnitReceiver, nid: NetworkID) {
+        match nid.data_unit() {
+            DataUnit::VoiceLCTerminator | DataUnit::VoiceSimpleTerminator => {
+                self.switch_control();
+                self.audio.send(AudioEvent::EndTransmission)
+                    .expect("unable to send end of transmission");
+            },
+            _ => {},
+        }
+    }
+
     fn handle_header(&mut self, _: &mut DataUnitReceiver, _: VoiceHeaderFields) {}
     fn handle_lc(&mut self, _: &mut DataUnitReceiver, _: LinkControlFields) {}
     fn handle_cc(&mut self, _: &mut DataUnitReceiver, _: CryptoControlFields) {}
@@ -141,11 +153,7 @@ impl MessageHandler for P25Receiver {
         }
     }
 
-    fn handle_term(&mut self, _: &mut DataUnitReceiver) {
-        self.switch_control();
-        self.audio.send(AudioEvent::EndTransmission)
-            .expect("unable to send end of transmission");
-    }
+    fn handle_term(&mut self, _: &mut DataUnitReceiver) {}
 }
 
 
