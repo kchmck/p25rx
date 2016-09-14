@@ -2,30 +2,26 @@ use imbe::decoder::{IMBEDecoder, CAIFrame};
 use imbe;
 use map_in_place::MapInPlace;
 use p25::voice::frame::VoiceFrame;
-use std::fs::File;
-use std::fs::OpenOptions;
-use std::io::{BufWriter, Write};
+use std::io::Write;
 use std::sync::mpsc::Receiver;
 use std;
-
-const IMBE_FILE: &'static str = "imbe.fifo";
 
 pub enum AudioEvent {
     VoiceFrame(VoiceFrame),
     EndTransmission,
 }
 
-pub struct Audio {
+pub struct Audio<W: Write> {
     imbe: IMBEDecoder,
-    out: BufWriter<File>,
+    out: W,
     queue: Receiver<AudioEvent>,
 }
 
-impl Audio {
-    pub fn new(queue: Receiver<AudioEvent>) -> Audio {
+impl<W: Write> Audio<W> {
+    pub fn new(out: W, queue: Receiver<AudioEvent>) -> Audio<W> {
         Audio {
             imbe: IMBEDecoder::new(),
-            out: BufWriter::new(OpenOptions::new().write(true).open(IMBE_FILE).unwrap()),
+            out: out,
             queue: queue,
         }
     }

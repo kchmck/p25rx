@@ -26,6 +26,8 @@ use std::io::Read;
 use std::sync::Arc;
 use std::sync::mpsc::channel;
 use std::thread;
+use std::fs::OpenOptions;
+use std::io::BufWriter;
 use xdg_basedir::dirs;
 
 mod audio;
@@ -74,6 +76,13 @@ fn main() {
         return;
     }
 
+    let output = BufWriter::new(
+        OpenOptions::new()
+            .write(true)
+            .open("imbe.fifo")
+            .expect("unable to open audio output file")
+    );
+
     let (tx_ui_ev, rx_ui_ev) = channel();
     let (tx_ctl_ev, rx_ctl_ev) = channel();
     let (tx_recv_ev, rx_recv_ev) = channel();
@@ -85,7 +94,7 @@ fn main() {
     let mut controller = Controller::new(control, rx_ctl_ev);
     let mut radio = BlockReader::new(tx_sdr_samp);
     let mut demod = Demod::new(rx_sdr_samp, tx_ui_ev.clone(), tx_recv_ev.clone());
-    let mut audio = Audio::new(rx_aud_ev);
+    let mut audio = Audio::new(output, rx_aud_ev);
     let mut receiver = P25Receiver::new(sites.clone(), rx_recv_ev, tx_ui_ev.clone(),
         tx_ctl_ev.clone(), tx_aud_ev.clone());
 
