@@ -69,10 +69,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ewma"
-version = "1.0.0"
-
-[[package]]
 name = "fnv"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -195,8 +191,8 @@ name = "p25"
 version = "1.0.0"
 dependencies = [
  "collect_slice 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ewma 1.0.0",
  "num 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
+ "static_ewma 1.0.0",
  "static_fir 1.0.0",
 ]
 
@@ -301,6 +297,10 @@ dependencies = [
  "num 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "static_fir 1.0.0",
 ]
+
+[[package]]
+name = "static_ewma"
+version = "1.0.0"
 
 [[package]]
 name = "static_fir"
