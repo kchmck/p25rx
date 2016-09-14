@@ -51,24 +51,29 @@ impl Demod {
         let mut pool = Pool::with_capacity(16, || vec![0.0; BUF_SIZE_COMPLEX]);
         let mut samples = vec![Complex32::zero(); BUF_SIZE_COMPLEX];
 
+        // Used to reduce the number of signal level messages sent.
         let mut notifier = Throttler::new(16);
 
         loop {
             let bytes = self.reader.recv().expect("unable to receive sdr samples");
 
+            // This is safe because it's transforming an array of N bytes to an array of
+            // N/2 16-bit words.
             let pairs = unsafe {
                 std::slice::from_raw_parts(bytes.as_ptr() as *const u16, BUF_SIZE_COMPLEX)
             };
 
+            // This is safe because it equals the original allocation length.
             unsafe { samples.set_len(BUF_SIZE_COMPLEX); }
 
+            // Transform interleaved byte pairs to complex floating point samples.
             pairs.iter()
                  .map(|&s| unsafe { *IQ.get_unchecked(s as usize) })
                  .collect_slice(&mut samples[..]);
 
             let len = self.decim.decim_in_place(&mut samples[..]);
 
-            // This is safe for the same reason as above.
+            // This is safe because the decimated length is less than the original length.
             unsafe { samples.set_len(len); }
 
             samples.map_in_place(|&s| self.bandpass.feed(s));
