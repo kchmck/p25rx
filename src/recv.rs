@@ -95,6 +95,8 @@ impl MessageHandler for P25Receiver {
                 self.switch_control();
                 self.audio.send(AudioEvent::EndTransmission)
                     .expect("unable to send end of transmission");
+
+                recv.resync();
             },
             _ => {},
         }
