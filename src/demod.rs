@@ -13,7 +13,7 @@ use std::sync::mpsc::{Sender, Receiver};
 use std;
 use throttle::Throttler;
 
-use p25_filts::{DecimFIR, BandpassFIR};
+use p25_filts::{DecimFIR, BandpassFIR, DeemphFIR};
 use ui::UIEvent;
 use recv::ReceiverEvent;
 use consts::{BUF_SIZE_COMPLEX, BASEBAND_SAMPLE_RATE};
@@ -25,6 +25,7 @@ const IMPEDANCE: f32 = 50.0;
 pub struct Demod {
     decim: Decimator<Decimate5, DecimFIR>,
     bandpass: FIRFilter<BandpassFIR>,
+    deemph: FIRFilter<DeemphFIR>,
     demod: FMDemod,
     reader: Receiver<Checkout<Vec<u8>>>,
     ui: Sender<UIEvent>,
@@ -40,6 +41,7 @@ impl Demod {
         Demod {
             decim: Decimator::new(),
             bandpass: FIRFilter::new(),
+            deemph: FIRFilter::new(),
             demod: FMDemod::new(FM_DEV as f32 / BASEBAND_SAMPLE_RATE as f32),
             reader: reader,
             ui: ui,
@@ -94,6 +96,8 @@ impl Demod {
             samples.iter()
                    .map(|&s| self.demod.feed(s))
                    .collect_slice(&mut baseband[..]);
+
+            baseband.map_in_place(|&s| self.deemph.feed(s));
 
             self.chan.send(ReceiverEvent::Baseband(baseband))
                 .expect("unable to send baseband");

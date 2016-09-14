@@ -8,10 +8,8 @@ use p25::voice::control::LinkControlFields;
 use p25::voice::crypto::CryptoControlFields;
 use p25::voice::frame::VoiceFrame;
 use p25::voice::header::VoiceHeaderFields;
-use p25_filts::DeemphFIR;
 use pi25_cfg::sites::P25Sites;
 use pool::Checkout;
-use static_fir::FIRFilter;
 use std::sync::Arc;
 use std::sync::mpsc::{Sender, Receiver};
 
@@ -26,7 +24,6 @@ pub enum ReceiverEvent {
 }
 
 pub struct P25Receiver {
-    deemph: FIRFilter<DeemphFIR>,
     sites: Arc<P25Sites>,
     site: usize,
     events: Receiver<ReceiverEvent>,
@@ -44,7 +41,6 @@ impl P25Receiver {
         -> P25Receiver
     {
         P25Receiver {
-            deemph: FIRFilter::new(),
             sites: sites,
             events: events,
             site: DEFAULT_SITE,
@@ -77,7 +73,7 @@ impl P25Receiver {
             match self.events.recv().expect("unable to receive baseband") {
                 ReceiverEvent::Baseband(samples) => {
                     for &s in samples.iter() {
-                        messages.feed(self.deemph.feed(s), self);
+                        messages.feed(s, self);
                     }
                 },
                 ReceiverEvent::SetSite(site) => {
