@@ -157,5 +157,3 @@ impl MessageHandler for P25Receiver {
 
     fn handle_term(&mut self, _: &mut DataUnitReceiver) {}
 }
-
-
