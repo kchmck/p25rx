@@ -1,4 +1,4 @@
-extern crate cfg;
+extern crate pi25_cfg;
 extern crate collect_slice;
 extern crate imbe;
 extern crate libc;
@@ -19,8 +19,8 @@ extern crate demod_fm;
 #[macro_use]
 extern crate static_fir;
 
-use cfg::sites::parse_sites;
-use cfg::talkgroups::parse_talkgroups;
+use pi25_cfg::sites::parse_sites;
+use pi25_cfg::talkgroups::parse_talkgroups;
 use std::fs::File;
 use std::io::Read;
 use std::sync::Arc;

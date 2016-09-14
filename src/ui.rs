@@ -1,6 +1,6 @@
-use cfg::sites::P25Sites;
-use cfg::talkgroups::TalkGroups;
 use p25::trunking::decode::TalkGroup;
+use pi25_cfg::sites::P25Sites;
+use pi25_cfg::talkgroups::TalkGroups;
 use sigpower::smeter::SignalLevel;
 use std::process::Command;
 use std::sync::Arc;

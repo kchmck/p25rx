@@ -5,7 +5,7 @@ authors = ["Mick Koch <mick@kochm.co>"]
 
 [dependencies]
 
-cfg = {version = "^1.0.0", path = "../cfg"}
+pi25_cfg = {version = "^1.0.0", path = "../pi25_cfg"}
 collect_slice = "^1.0.0"
 static_fir = {version = "^1.0.0", path = "../static_fir"}
 static_decimate = {version = "^1.0.0", path = "../static_decimate"}
