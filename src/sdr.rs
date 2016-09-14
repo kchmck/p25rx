@@ -5,13 +5,13 @@ use std::io::Write;
 
 use consts::{BUF_SIZE_RAW, BUF_COUNT};
 
-pub struct Radio {
+pub struct BlockReader {
     chan: Sender<Checkout<Vec<u8>>>,
 }
 
-impl Radio {
-    pub fn new(chan: Sender<Checkout<Vec<u8>>>) -> Radio {
-        Radio {
+impl BlockReader {
+    pub fn new(chan: Sender<Checkout<Vec<u8>>>) -> BlockReader {
+        BlockReader {
             chan: chan,
         }
     }
