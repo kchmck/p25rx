@@ -1,6 +1,7 @@
 use p25::error::P25Error;
 use p25::message::{MessageReceiver, MessageHandler};
 use p25::nid::NetworkID;
+use p25::receiver::DataUnitReceiver;
 use p25::trunking::decode::TalkGroup;
 use p25::trunking::tsbk::{self, TSBKFields, TSBKOpcode};
 use p25::voice::control::LinkControlFields;
@@ -89,23 +90,22 @@ impl P25Receiver {
 }
 
 impl MessageHandler for P25Receiver {
-    fn handle_error(&mut self, _: P25Error) {}
-    fn handle_nid(&mut self, _: NetworkID) {}
-    fn handle_header(&mut self, _: VoiceHeaderFields) {}
-    fn handle_lc(&mut self, _: LinkControlFields) {}
-    fn handle_cc(&mut self, _: CryptoControlFields) {}
-    fn handle_data_frag(&mut self, _: u32) {}
+    fn handle_error(&mut self, _: &mut DataUnitReceiver, _: P25Error) {}
+    fn handle_nid(&mut self, _: &mut DataUnitReceiver, _: NetworkID) {}
+    fn handle_header(&mut self, _: &mut DataUnitReceiver, _: VoiceHeaderFields) {}
+    fn handle_lc(&mut self, _: &mut DataUnitReceiver, _: LinkControlFields) {}
+    fn handle_cc(&mut self, _: &mut DataUnitReceiver, _: CryptoControlFields) {}
+    fn handle_data_frag(&mut self, _: &mut DataUnitReceiver, _: u32) {}
 
-    fn handle_frame(&mut self, vf: VoiceFrame) {
+    fn handle_frame(&mut self, _: &mut DataUnitReceiver, vf: VoiceFrame) {
         self.audio.send(AudioEvent::VoiceFrame(vf))
             .expect("unable to send voice frame");
     }
 
-    fn handle_tsbk(&mut self, tsbk: TSBKFields) {
+    fn handle_tsbk(&mut self, _: &mut DataUnitReceiver, tsbk: TSBKFields) {
         if tsbk.mfg() != 0 {
             return;
         }
-
         if tsbk.crc() != tsbk.calc_crc() {
             return;
         }
@@ -145,7 +145,7 @@ impl MessageHandler for P25Receiver {
         }
     }
 
-    fn handle_term(&mut self) {
+    fn handle_term(&mut self, _: &mut DataUnitReceiver) {
         self.switch_control();
         self.audio.send(AudioEvent::EndTransmission)
             .expect("unable to send end of transmission");
