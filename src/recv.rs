@@ -22,11 +22,23 @@ use ui::UIEvent;
 pub enum ReceiverEvent {
     Baseband(Checkout<Vec<f32>>),
     SetSite(usize),
+    /// Channel frequency has been switched.
+    ChannelUpdated,
+}
+
+/// State of the receiver.
+#[derive(Copy, Clone)]
+enum State {
+    /// Receiving and decoding normally.
+    Receive,
+    /// Waiting until the channel frequency has been switched.
+    WaitChannel,
 }
 
 pub struct P25Receiver {
     sites: Arc<P25Sites>,
     site: usize,
+    state: State,
     events: Receiver<ReceiverEvent>,
     ui: Sender<UIEvent>,
     sdr: Sender<ControllerEvent>,
@@ -45,22 +57,26 @@ impl P25Receiver {
             sites: sites,
             events: events,
             site: DEFAULT_SITE,
+            state: State::Receive,
             ui: ui,
             sdr: sdr,
             audio: audio,
         }.init()
     }
 
-    fn init(self) -> Self {
+    fn init(mut self) -> Self {
         self.switch_control();
         self
     }
 
-    fn switch_control(&self) {
-        self.set_freq(self.sites[self.site].control);
+    fn switch_control(&mut self) {
+        let site = self.sites[self.site].control;
+        self.set_freq(site);
     }
 
-    fn set_freq(&self, freq: u32) {
+    fn set_freq(&mut self, freq: u32) {
+        self.state = State::WaitChannel;
+
         self.ui.send(UIEvent::SetFreq(freq))
             .expect("unable to update freq in UI");
         self.sdr.send(ControllerEvent::SetFreq(freq))
@@ -72,14 +88,22 @@ impl P25Receiver {
 
         loop {
             match self.events.recv().expect("unable to receive baseband") {
-                ReceiverEvent::Baseband(samples) => {
-                    for &s in samples.iter() {
-                        messages.feed(s, self);
-                    }
+                ReceiverEvent::Baseband(samples) => match self.state {
+                    State::Receive => {
+                        for &s in samples.iter() {
+                            messages.feed(s, self);
+                        }
+                    },
+                    // Consider baseband samples invalid until channel has been switched.
+                    State::WaitChannel => {},
                 },
                 ReceiverEvent::SetSite(site) => {
                     self.site = site;
                     self.switch_control();
+                },
+                ReceiverEvent::ChannelUpdated => match self.state {
+                    State::WaitChannel => self.state = State::Receive,
+                    _ => panic!("unexpected channel update"),
                 },
             }
         }
