@@ -23,6 +23,7 @@ extern crate static_fir;
 use clap::{Arg, App};
 use pi25_cfg::sites::parse_sites;
 use pi25_cfg::talkgroups::parse_talkgroups;
+use rtlsdr::TunerGains;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::BufWriter;
@@ -61,6 +62,11 @@ fn main() {
              .short("s")
              .help("default site to use")
              .value_name("SITE"))
+        .arg(Arg::with_name("gain")
+             .short("g")
+             .help("tuner gain (use -g list to see all)")
+             .required(true)
+             .value_name("GAIN"))
         .get_matches();
 
     let ppm: i32 = match args.value_of("ppm") {
@@ -70,9 +76,23 @@ fn main() {
 
     let (mut control, reader) = rtlsdr::open(0).expect("unable to open rtlsdr");
 
+    let gain: i32 = match args.value_of("gain").unwrap() {
+        "list" => {
+            let mut gains = TunerGains::default();
+            let ngains = control.get_tuner_gains(&mut gains);
+
+            for g in &gains[..ngains] {
+                println!("{}", g);
+            }
+
+            return;
+        },
+        s => s.parse().expect("invalid gain"),
+    };
+
     assert!(control.set_sample_rate(SDR_SAMPLE_RATE));
     assert!(control.set_ppm(ppm));
-    assert!(control.enable_agc());
+    assert!(control.set_tuner_gain(gain));
     assert!(control.reset_buf());
 
     let mut conf = dirs::get_config_home().unwrap();
