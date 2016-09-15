@@ -1,20 +1,20 @@
-extern crate pi25_cfg;
 extern crate collect_slice;
+extern crate demod_fm;
 extern crate imbe;
 extern crate libc;
 extern crate map_in_place;
 extern crate num;
 extern crate p25;
 extern crate p25_filts;
+extern crate pi25_cfg;
 extern crate pool;
 extern crate prctl;
 extern crate rtlsdr;
 extern crate rtlsdr_iq;
 extern crate sigpower;
+extern crate static_decimate;
 extern crate throttle;
 extern crate xdg_basedir;
-extern crate static_decimate;
-extern crate demod_fm;
 
 #[macro_use]
 extern crate static_fir;
@@ -22,12 +22,12 @@ extern crate static_fir;
 use pi25_cfg::sites::parse_sites;
 use pi25_cfg::talkgroups::parse_talkgroups;
 use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::BufWriter;
 use std::io::Read;
 use std::sync::Arc;
 use std::sync::mpsc::channel;
 use std::thread;
-use std::fs::OpenOptions;
-use std::io::BufWriter;
 use xdg_basedir::dirs;
 
 mod audio;
