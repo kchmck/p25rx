@@ -6,7 +6,6 @@ use std::process::Command;
 use std::sync::Arc;
 use std::sync::mpsc::{Sender, Receiver};
 
-use consts::DEFAULT_SITE;
 use recv::ReceiverEvent;
 use sdr::ControllerEvent;
 
@@ -40,6 +39,7 @@ pub struct MainApp {
 impl MainApp {
     pub fn new(talkgroups: TalkGroups,
                sites: Arc<P25Sites>,
+               site: usize,
                events: Receiver<UIEvent>,
                sdr: Sender<ControllerEvent>,
                recv: Sender<ReceiverEvent>)
@@ -49,7 +49,7 @@ impl MainApp {
             state: AppState {
                 sites: sites,
                 volume: (MAX_VOL + MIN_VOL) / 2,
-                site: DEFAULT_SITE,
+                site: site,
                 talkgroup: TalkGroup::Nobody,
                 freq: 0,
                 signal: SignalLevel::None,

@@ -57,6 +57,10 @@ fn main() {
              .help("file/fifo for audio samples (f32le/8kHz/mono)")
              .required(true)
              .value_name("FILE"))
+        .arg(Arg::with_name("site")
+             .short("s")
+             .help("default site to use")
+             .value_name("SITE"))
         .get_matches();
 
     let ppm: i32 = match args.value_of("ppm") {
@@ -92,8 +96,15 @@ fn main() {
     };
 
     if sites.len() == 0 {
+        println!("no sites configured");
         return;
     }
+
+    let site: usize = match args.value_of("site") {
+        Some(name) => sites.iter().position(|s| s.name == name)
+            .expect("invalid site name"),
+        None => 0,
+    };
 
     let output = BufWriter::new(
         OpenOptions::new()
@@ -108,13 +119,13 @@ fn main() {
     let (tx_sdr_samp, rx_sdr_samp) = channel();
     let (tx_aud_ev, rx_aud_ev) = channel();
 
-    let mut app = MainApp::new(talkgroups, sites.clone(), rx_ui_ev,
+    let mut app = MainApp::new(talkgroups, sites.clone(), site, rx_ui_ev,
         tx_ctl_ev.clone(), tx_recv_ev.clone());
     let mut controller = Controller::new(control, tx_recv_ev.clone(), rx_ctl_ev);
     let mut radio = BlockReader::new(tx_sdr_samp);
     let mut demod = Demod::new(rx_sdr_samp, tx_ui_ev.clone(), tx_recv_ev.clone());
     let mut audio = Audio::new(output, rx_aud_ev);
-    let mut receiver = P25Receiver::new(sites.clone(), rx_recv_ev, tx_ui_ev.clone(),
+    let mut receiver = P25Receiver::new(sites.clone(), site, rx_recv_ev, tx_ui_ev.clone(),
         tx_ctl_ev.clone(), tx_aud_ev.clone());
 
     thread::spawn(move || {

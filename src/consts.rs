@@ -9,6 +9,3 @@ pub const BUF_SIZE_COMPLEX: usize = BUF_SIZE_RAW / 2;
 pub const SDR_SAMPLE_RATE: u32 = 240_000;
 /// Downconverted baseband sample rate.
 pub const BASEBAND_SAMPLE_RATE: u32 = 48000;
-
-/// Default site to use from configuration.
-pub const DEFAULT_SITE: usize = 0;

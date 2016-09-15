@@ -15,7 +15,6 @@ use std::sync::Arc;
 use std::sync::mpsc::{Sender, Receiver};
 
 use audio::AudioEvent;
-use consts::DEFAULT_SITE;
 use sdr::ControllerEvent;
 use ui::UIEvent;
 
@@ -47,6 +46,7 @@ pub struct P25Receiver {
 
 impl P25Receiver {
     pub fn new(sites: Arc<P25Sites>,
+               site: usize,
                events: Receiver<ReceiverEvent>,
                ui: Sender<UIEvent>,
                sdr: Sender<ControllerEvent>,
@@ -56,7 +56,7 @@ impl P25Receiver {
         P25Receiver {
             sites: sites,
             events: events,
-            site: DEFAULT_SITE,
+            site: site,
             state: State::Receive,
             ui: ui,
             sdr: sdr,
