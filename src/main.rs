@@ -1,3 +1,4 @@
+extern crate clap;
 extern crate collect_slice;
 extern crate demod_fm;
 extern crate imbe;
@@ -19,6 +20,7 @@ extern crate xdg_basedir;
 #[macro_use]
 extern crate static_fir;
 
+use clap::{Arg, App};
 use pi25_cfg::sites::parse_sites;
 use pi25_cfg::talkgroups::parse_talkgroups;
 use std::fs::File;
@@ -45,10 +47,22 @@ use sdr::{BlockReader, Controller};
 use ui::MainApp;
 
 fn main() {
+    let args = App::new("pi25")
+        .arg(Arg::with_name("ppm")
+             .short("p")
+             .help("ppm frequency adjustment")
+             .value_name("PPM"))
+        .get_matches();
+
+    let ppm: i32 = match args.value_of("ppm") {
+        Some(s) => s.parse().expect("invalid ppm"),
+        None => 0,
+    };
+
     let (mut control, reader) = rtlsdr::open(0).expect("unable to open rtlsdr");
 
     assert!(control.set_sample_rate(SDR_SAMPLE_RATE));
-    assert!(control.set_ppm(-2));
+    assert!(control.set_ppm(ppm));
     assert!(control.enable_agc());
     assert!(control.reset_buf());
 
