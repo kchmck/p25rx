@@ -145,7 +145,7 @@ fn main() {
     let mut radio = BlockReader::new(tx_sdr_samp);
     let mut demod = Demod::new(rx_sdr_samp, tx_ui_ev.clone(), tx_recv_ev.clone());
     let mut audio = Audio::new(output, rx_aud_ev);
-    let mut receiver = P25Receiver::new(sites.clone(), site, rx_recv_ev, tx_ui_ev.clone(),
+    let mut receiver = P25Receiver::new(sites.clone(), rx_recv_ev, tx_ui_ev.clone(),
         tx_ctl_ev.clone(), tx_aud_ev.clone());
 
     thread::spawn(move || {

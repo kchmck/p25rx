@@ -13,6 +13,7 @@ use pi25_cfg::sites::P25Sites;
 use pool::Checkout;
 use std::sync::Arc;
 use std::sync::mpsc::{Sender, Receiver};
+use std;
 
 use audio::AudioEvent;
 use sdr::ControllerEvent;
@@ -46,7 +47,6 @@ pub struct P25Receiver {
 
 impl P25Receiver {
     pub fn new(sites: Arc<P25Sites>,
-               site: usize,
                events: Receiver<ReceiverEvent>,
                ui: Sender<UIEvent>,
                sdr: Sender<ControllerEvent>,
@@ -56,17 +56,12 @@ impl P25Receiver {
         P25Receiver {
             sites: sites,
             events: events,
-            site: site,
-            state: State::Receive,
+            site: std::usize::MAX,
+            state: State::WaitChannel,
             ui: ui,
             sdr: sdr,
             audio: audio,
-        }.init()
-    }
-
-    fn init(mut self) -> Self {
-        self.switch_control();
-        self
+        }
     }
 
     fn switch_control(&mut self) {
