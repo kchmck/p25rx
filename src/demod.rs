@@ -80,10 +80,10 @@ impl Demod {
 
             samples.map_in_place(|&s| self.bandpass.feed(s));
 
-            let level = SignalLevel::from_dbm(
-                power::power_dbm(&samples[..], IMPEDANCE) + POWER_ADJUST);
-
             notifier.throttle(|| {
+                let level = SignalLevel::from_dbm(
+                    power::power_dbm(&samples[..], IMPEDANCE) + POWER_ADJUST);
+
                 self.ui.send(UIEvent::SetSignalLevel(level))
                     .expect("unable to send signal level");
             });
