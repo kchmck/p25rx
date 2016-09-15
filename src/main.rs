@@ -52,6 +52,11 @@ fn main() {
              .short("p")
              .help("ppm frequency adjustment")
              .value_name("PPM"))
+        .arg(Arg::with_name("audio")
+             .short("a")
+             .help("file/fifo for audio samples (f32le/8kHz/mono)")
+             .required(true)
+             .value_name("FILE"))
         .get_matches();
 
     let ppm: i32 = match args.value_of("ppm") {
@@ -93,7 +98,7 @@ fn main() {
     let output = BufWriter::new(
         OpenOptions::new()
             .write(true)
-            .open("imbe.fifo")
+            .open(args.value_of("audio").unwrap())
             .expect("unable to open audio output file")
     );
 
