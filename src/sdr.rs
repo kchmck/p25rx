@@ -4,7 +4,6 @@ use rtlsdr::{Control, Reader};
 use std::io::Write;
 
 use consts::{BUF_SIZE_RAW, BUF_COUNT};
-use recv::ReceiverEvent;
 
 pub struct BlockReader {
     chan: Sender<Checkout<Vec<u8>>>,
@@ -34,18 +33,13 @@ pub enum ControllerEvent {
 
 pub struct Controller {
     sdr: Control,
-    recv: Sender<ReceiverEvent>,
     events: Receiver<ControllerEvent>,
 }
 
 impl Controller {
-    pub fn new(sdr: Control, recv: Sender<ReceiverEvent>,
-               events: Receiver<ControllerEvent>)
-        -> Controller
-    {
+    pub fn new(sdr: Control, events: Receiver<ControllerEvent>) -> Controller {
         Controller {
             sdr: sdr,
-            recv: recv,
             events: events,
         }
     }
@@ -53,11 +47,8 @@ impl Controller {
     pub fn run(&mut self) {
         loop {
             match self.events.recv().expect("unable to receive controller event") {
-                ControllerEvent::SetFreq(freq) => {
-                    assert!(self.sdr.set_center_freq(freq));
-                    self.recv.send(ReceiverEvent::ChannelUpdated)
-                        .expect("unable to send channel switch notification");
-                },
+                ControllerEvent::SetFreq(freq) =>
+                    assert!(self.sdr.set_center_freq(freq)),
             }
         }
     }

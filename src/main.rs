@@ -141,7 +141,7 @@ fn main() {
 
     let mut app = MainApp::new(talkgroups, sites.clone(), site, rx_ui_ev,
         tx_ctl_ev.clone(), tx_recv_ev.clone());
-    let mut controller = Controller::new(control, tx_recv_ev.clone(), rx_ctl_ev);
+    let mut controller = Controller::new(control, rx_ctl_ev);
     let mut radio = BlockReader::new(tx_sdr_samp);
     let mut demod = Demod::new(rx_sdr_samp, tx_ui_ev.clone(), tx_recv_ev.clone());
     let mut audio = Audio::new(output, rx_aud_ev);
