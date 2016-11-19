@@ -1,8 +1,7 @@
 use p25::error::P25Error;
-use p25::message::{MessageReceiver, MessageHandler};
-use p25::nid::DataUnit;
-use p25::nid::NetworkID;
-use p25::receiver::DataUnitReceiver;
+use p25::message::data_unit::DataUnitReceiver;
+use p25::message::nid::{DataUnit, NetworkID};
+use p25::message::receiver::{MessageReceiver, MessageHandler};
 use p25::trunking::decode::TalkGroup;
 use p25::trunking::tsbk::{self, TSBKFields, TSBKOpcode};
 use p25::voice::control::LinkControlFields;
@@ -85,7 +84,7 @@ impl MessageHandler for P25Receiver {
     fn handle_error(&mut self, _: &mut DataUnitReceiver, _: P25Error) {}
 
     fn handle_nid(&mut self, recv: &mut DataUnitReceiver, nid: NetworkID) {
-        match nid.data_unit() {
+        match nid.data_unit {
             DataUnit::VoiceLCTerminator | DataUnit::VoiceSimpleTerminator => {
                 self.switch_control();
                 self.audio.send(AudioEvent::EndTransmission)
@@ -111,7 +110,8 @@ impl MessageHandler for P25Receiver {
         if tsbk.mfg() != 0 {
             return;
         }
-        if tsbk.crc() != tsbk.calc_crc() {
+
+        if !tsbk.crc_valid() {
             return;
         }
 
