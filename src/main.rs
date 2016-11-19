@@ -64,7 +64,7 @@ fn main() {
              .value_name("SITE"))
         .arg(Arg::with_name("gain")
              .short("g")
-             .help("tuner gain (use -g list to see all)")
+             .help("tuner gain (use -g list to see all options)")
              .required(true)
              .value_name("GAIN"))
         .get_matches();
@@ -76,7 +76,7 @@ fn main() {
 
     let (mut control, reader) = rtlsdr::open(0).expect("unable to open rtlsdr");
 
-    let gain: i32 = match args.value_of("gain").unwrap() {
+    match args.value_of("gain").unwrap() {
         "list" => {
             let mut gains = TunerGains::default();
             let ngains = control.get_tuner_gains(&mut gains);
@@ -85,14 +85,16 @@ fn main() {
                 println!("{}", g);
             }
 
+            println!("auto");
+
             return;
         },
-        s => s.parse().expect("invalid gain"),
-    };
+        "auto" => assert!(control.enable_agc()),
+        s => assert!(control.set_tuner_gain(s.parse().expect("invalid gain"))),
+    }
 
     assert!(control.set_sample_rate(SDR_SAMPLE_RATE));
     assert!(control.set_ppm(ppm));
-    assert!(control.set_tuner_gain(gain));
     assert!(control.reset_buf());
 
     let mut conf = dirs::get_config_home().unwrap();
