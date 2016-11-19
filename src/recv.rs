@@ -2,7 +2,7 @@ use p25::error::P25Error;
 use p25::message::data_unit::DataUnitReceiver;
 use p25::message::nid::{DataUnit, NetworkID};
 use p25::message::receiver::{MessageReceiver, MessageHandler};
-use p25::trunking::decode::{TalkGroup, ChannelParamsMap};
+use p25::trunking::decode::{TalkGroup, ChannelParamsMap, Channel};
 use p25::trunking::tsbk::{self, TSBKFields, TSBKOpcode};
 use p25::voice::control::LinkControlFields;
 use p25::voice::crypto::CryptoControlFields;
@@ -82,6 +82,20 @@ impl P25Receiver {
             }
         }
     }
+
+    fn use_talkgroup(&mut self, tg: TalkGroup, ch: Channel) -> bool {
+        let freq = match self.channels[ch.id() as usize] {
+            Some(p) => p.rx_freq(ch.number()),
+            None => return false,
+        };
+
+        self.cur_talkgroup = tg;
+
+        self.set_freq(freq);
+        self.ui.send(UIEvent::SetTalkGroup(tg)).expect("unable to send talkgroup");
+
+        true
+    }
 }
 
 impl MessageHandler for P25Receiver {
@@ -126,22 +140,14 @@ impl MessageHandler for P25Receiver {
 
         match opcode {
             TSBKOpcode::GroupVoiceUpdate => {
-                let dec = tsbk::GroupVoiceUpdate::new(tsbk);
-                let cha = dec.channel_a();
-                let chb = dec.channel_b();
+                let updates = tsbk::GroupVoiceUpdate::new(tsbk).updates();
 
-                let freq = match self.channels[chb.id() as usize] {
-                    Some(p) => p.rx_freq(chb.number()),
-                    None => return,
-                };
-
-                self.cur_talkgroup = dec.talk_group_b();
-
-                self.set_freq(freq);
-                self.ui.send(UIEvent::SetTalkGroup(dec.talk_group_a()))
-                    .expect("unable to send talkgroup");
-
-                recv.resync();
+                for (tg, ch) in updates.iter().cloned() {
+                    if self.use_talkgroup(tg, ch) {
+                        recv.resync();
+                        break;
+                    }
+                }
             },
             TSBKOpcode::ChannelParamsUpdate => {
                 let dec = tsbk::ChannelParamsUpdate::new(tsbk);
