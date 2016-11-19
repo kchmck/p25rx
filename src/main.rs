@@ -93,8 +93,12 @@ fn main() {
         s => assert!(control.set_tuner_gain(s.parse().expect("invalid gain"))),
     }
 
+    // librtlsdr doesn't like zero ppm.
+    if ppm != 0 {
+        assert!(control.set_ppm(ppm));
+    }
+
     assert!(control.set_sample_rate(SDR_SAMPLE_RATE));
-    assert!(control.set_ppm(ppm));
     assert!(control.reset_buf());
 
     let mut conf = dirs::get_config_home().unwrap();
