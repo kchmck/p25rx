@@ -27,6 +27,7 @@ pub struct P25Receiver {
     sites: Arc<P25Sites>,
     site: usize,
     channels: ChannelParamsMap,
+    cur_talkgroup: TalkGroup,
     events: Receiver<ReceiverEvent>,
     ui: Sender<UIEvent>,
     sdr: Sender<ControllerEvent>,
@@ -46,6 +47,7 @@ impl P25Receiver {
             events: events,
             site: std::usize::MAX,
             channels: ChannelParamsMap::default(),
+            cur_talkgroup: TalkGroup::Default,
             ui: ui,
             sdr: sdr,
             audio: audio,
@@ -132,6 +134,8 @@ impl MessageHandler for P25Receiver {
                     Some(p) => p.rx_freq(chb.number()),
                     None => return,
                 };
+
+                self.cur_talkgroup = dec.talk_group_b();
 
                 self.set_freq(freq);
                 self.ui.send(UIEvent::SetTalkGroup(dec.talk_group_a()))
