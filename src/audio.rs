@@ -32,7 +32,7 @@ impl<W: Write> Audio<W> {
                 AudioEvent::VoiceFrame(vf) => {
                     let frame = CAIFrame::new(vf.chunks, vf.errors);
 
-                    let mut samples = [0.0; imbe::consts::SAMPLES];
+                    let mut samples = [0.0; imbe::consts::SAMPLES_PER_FRAME];
                     self.imbe.decode(frame, &mut samples);
                     samples.map_in_place(|&s| s / 8192.0);
 
