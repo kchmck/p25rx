@@ -2,7 +2,7 @@ use p25::error::P25Error;
 use p25::message::data_unit::DataUnitReceiver;
 use p25::message::nid::{DataUnit, NetworkID};
 use p25::message::receiver::{MessageReceiver, MessageHandler};
-use p25::trunking::decode::TalkGroup;
+use p25::trunking::decode::{TalkGroup, ChannelParamsMap};
 use p25::trunking::tsbk::{self, TSBKFields, TSBKOpcode};
 use p25::voice::control::LinkControlFields;
 use p25::voice::crypto::CryptoControlFields;
@@ -26,6 +26,7 @@ pub enum ReceiverEvent {
 pub struct P25Receiver {
     sites: Arc<P25Sites>,
     site: usize,
+    channels: ChannelParamsMap,
     events: Receiver<ReceiverEvent>,
     ui: Sender<UIEvent>,
     sdr: Sender<ControllerEvent>,
@@ -44,6 +45,7 @@ impl P25Receiver {
             sites: sites,
             events: events,
             site: std::usize::MAX,
+            channels: ChannelParamsMap::default(),
             ui: ui,
             sdr: sdr,
             audio: audio,
@@ -106,7 +108,7 @@ impl MessageHandler for P25Receiver {
             .expect("unable to send voice frame");
     }
 
-    fn handle_tsbk(&mut self, _: &mut DataUnitReceiver, tsbk: TSBKFields) {
+    fn handle_tsbk(&mut self, recv: &mut DataUnitReceiver, tsbk: TSBKFields) {
         if tsbk.mfg() != 0 {
             return;
         }
@@ -123,28 +125,23 @@ impl MessageHandler for P25Receiver {
         match opcode {
             TSBKOpcode::GroupVoiceUpdate => {
                 let dec = tsbk::GroupVoiceUpdate::new(tsbk);
-                let ch1 = dec.channel_a();
-                let ch2 = dec.channel_b();
+                let cha = dec.channel_a();
+                let chb = dec.channel_b();
 
-                if dec.talk_group_a() == TalkGroup::Other(0xCB68) {
-                    return;
-                }
-
-                let freq = match self.sites[self.site].traffic.get(&ch1.number()) {
-                    Some(&freq) => freq,
-                    None => {
-                        println!("talkgroup 1:{:?}", dec.talk_group_a());
-                        println!("  number:{}", ch1.number());
-                        println!("talkgroup 2:{:?}", dec.talk_group_b());
-                        println!("  number:{}", ch2.number());
-
-                        return;
-                    },
+                let freq = match self.channels[chb.id() as usize] {
+                    Some(p) => p.rx_freq(chb.number()),
+                    None => return,
                 };
 
                 self.set_freq(freq);
                 self.ui.send(UIEvent::SetTalkGroup(dec.talk_group_a()))
                     .expect("unable to send talkgroup");
+
+                recv.resync();
+            },
+            TSBKOpcode::ChannelParamsUpdate => {
+                let dec = tsbk::ChannelParamsUpdate::new(tsbk);
+                self.channels[dec.id() as usize] = Some(dec.params());
             },
             _ => {},
         }
