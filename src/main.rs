@@ -1,6 +1,7 @@
 extern crate clap;
 extern crate collect_slice;
 extern crate demod_fm;
+extern crate fnv;
 extern crate imbe;
 extern crate libc;
 extern crate map_in_place;

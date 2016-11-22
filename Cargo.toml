@@ -8,6 +8,7 @@ authors = ["Mick Koch <mick@kochm.co>"]
 clap = "^2.12.1"
 collect_slice = "^1.0.0"
 demod_fm = {version = "^1.0.0", path = "../demod_fm"}
+fnv = "^1.0.5"
 imbe = {version = "^1.0.0", path = "../imbe"}
 libc = "^0.2.8"
 map_in_place = {version = "^1.0.0", path = "../map_in_place"}
