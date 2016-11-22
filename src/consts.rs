@@ -9,3 +9,13 @@ pub const BUF_SIZE_COMPLEX: usize = BUF_SIZE_RAW / 2;
 pub const SDR_SAMPLE_RATE: u32 = 240_000;
 /// Downconverted baseband sample rate.
 pub const BASEBAND_SAMPLE_RATE: u32 = 48000;
+
+#[cfg(test)]
+mod test {
+    use p25;
+
+    #[test]
+    fn verify_sample_rate() {
+        assert_eq!(super::BASEBAND_SAMPLE_RATE as usize, p25::consts::SAMPLE_RATE);
+    }
+}
