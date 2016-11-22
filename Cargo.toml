@@ -5,10 +5,8 @@ authors = ["Mick Koch <mick@kochm.co>"]
 
 [dependencies]
 
-pi25_cfg = {version = "^1.0.0", path = "../pi25_cfg"}
+clap = "^2.12.1"
 collect_slice = "^1.0.0"
-static_fir = {version = "^1.0.0", path = "../static_fir"}
-static_decimate = {version = "^1.0.0", path = "../static_decimate"}
 demod_fm = {version = "^1.0.0", path = "../demod_fm"}
 imbe = {version = "^1.0.0", path = "../imbe"}
 libc = "^0.2.8"
@@ -16,12 +14,14 @@ map_in_place = {version = "^1.0.0", path = "../map_in_place"}
 num = "^0.1.34"
 p25 = {version = "^1.0.0", path = "../p25"}
 p25_filts = {version = "^1.0.0", path = "../p25_filts"}
+pi25_cfg = {version = "^1.0.0", path = "../pi25_cfg"}
 pool = {version = "^0.1.3", path = "../pool"}
 prctl = {version = "^1.0.0", path = "../prctl-rs"}
 rand = "^0.3.13"
 rtlsdr = {version = "^1.0.0", path = "../rtlsdr"}
 rtlsdr_iq = {version = "^1.0.0", path = "../rtlsdr_iq"}
 sigpower = {version = "^1.0.0", path = "../sigpower"}
+static_decimate = {version = "^1.0.0", path = "../static_decimate"}
+static_fir = {version = "^1.0.0", path = "../static_fir"}
 throttle = {version = "^1.0.0", path = "../throttle"}
 xdg-basedir = "^1.0.0"
-clap = "^2.12.1"
