@@ -171,7 +171,7 @@ impl MessageHandler for P25Receiver {
 
         match opcode {
             TSBKOpcode::GroupVoiceUpdate => {
-                let updates = fields::GroupVoiceUpdate::new(tsbk.payload()).updates();
+                let updates = fields::GroupTrafficUpdate::new(tsbk.payload()).updates();
 
                 for (ch, tg) in updates.iter().cloned() {
                     if self.use_talkgroup(tg, ch) {
