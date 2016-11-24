@@ -3,8 +3,8 @@ use p25::error::P25Error;
 use p25::message::data_unit::DataUnitReceiver;
 use p25::message::nid::{DataUnit, NetworkID};
 use p25::message::receiver::{MessageReceiver, MessageHandler};
-use p25::trunking::decode::{TalkGroup, ChannelParamsMap, Channel};
-use p25::trunking::tsbk::{self, TSBKFields, TSBKOpcode};
+use p25::trunking::fields::{self, TalkGroup, ChannelParamsMap, Channel};
+use p25::trunking::tsbk::{TSBKFields, TSBKOpcode};
 use p25::voice::control::{LinkControlFields, LinkControlOpcode};
 use p25::voice::crypto::{CryptoAlgorithm, CryptoControlFields};
 use p25::voice::frame::VoiceFrame;
@@ -145,7 +145,7 @@ impl MessageHandler for P25Receiver {
     fn handle_lc(&mut self, _: &mut DataUnitReceiver, _: LinkControlFields) {}
 
     fn handle_cc(&mut self, recv: &mut DataUnitReceiver, cc: CryptoControlFields) {
-        self.handle_crypto(recv, cc.crypto_alg());
+        self.handle_crypto(recv, cc.alg());
     }
 
     fn handle_data_frag(&mut self, _: &mut DataUnitReceiver, _: u32) {}
@@ -171,9 +171,9 @@ impl MessageHandler for P25Receiver {
 
         match opcode {
             TSBKOpcode::GroupVoiceUpdate => {
-                let updates = tsbk::GroupVoiceUpdate::new(tsbk).updates();
+                let updates = fields::GroupVoiceUpdate::new(tsbk.payload()).updates();
 
-                for (tg, ch) in updates.iter().cloned() {
+                for (ch, tg) in updates.iter().cloned() {
                     if self.use_talkgroup(tg, ch) {
                         recv.resync();
                         break;
@@ -181,7 +181,7 @@ impl MessageHandler for P25Receiver {
                 }
             },
             TSBKOpcode::ChannelParamsUpdate => {
-                let dec = tsbk::ChannelParamsUpdate::new(tsbk);
+                let dec = fields::ChannelParamsUpdate::new(tsbk.payload());
                 self.channels[dec.id() as usize] = Some(dec.params());
             },
             _ => {},

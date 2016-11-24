@@ -1,4 +1,4 @@
-use p25::trunking::decode::TalkGroup;
+use p25::trunking::fields::TalkGroup;
 use pi25_cfg::sites::P25Sites;
 use pi25_cfg::talkgroups::TalkGroups;
 use sigpower::smeter::SignalLevel;
