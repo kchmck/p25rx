@@ -6,7 +6,7 @@ authors = ["Mick Koch <mick@kochm.co>"]
 [dependencies]
 
 clap = "^2.12.1"
-collect_slice = "^1.0.0"
+collect_slice = "^1.1.0"
 demod_fm = {version = "^1.0.0", path = "../demod_fm"}
 fnv = "^1.0.5"
 imbe = {version = "^1.0.0", path = "../imbe"}
