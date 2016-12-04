@@ -67,6 +67,10 @@ fn main() {
              .help("tuner gain (use -g list to see all options)")
              .required(true)
              .value_name("GAIN"))
+        .arg(Arg::with_name("conf")
+             .short("c")
+             .help("path to config file")
+             .value_name("PATH"))
         .get_matches();
 
     let ppm: i32 = match args.value_of("ppm") {
@@ -101,17 +105,21 @@ fn main() {
     assert!(control.set_sample_rate(SDR_SAMPLE_RATE));
     assert!(control.reset_buf());
 
-    let mut conf = dirs::get_config_home().unwrap();
-    conf.push("pi25");
-
     let sites = {
-        let mut conf = conf.clone();
-        conf.push("p25.toml");
+        let mut file = match args.value_of("conf") {
+            Some(path) => File::open(path),
+            None => {
+                let mut conf = dirs::get_config_home().unwrap();
+                conf.push("pi25/p25.toml");
+
+                File::open(conf)
+            },
+        }.expect("unable to open config file");
 
         let mut toml = String::new();
-        File::open(conf).unwrap().read_to_string(&mut toml).unwrap();
+        file.read_to_string(&mut toml).unwrap();
 
-        Arc::new(parse_sites(&toml).unwrap())
+        Arc::new(parse_sites(&toml).expect("error parsing config file"))
     };
 
     if sites.len() == 0 {
