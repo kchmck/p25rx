@@ -23,7 +23,6 @@ extern crate static_fir;
 
 use clap::{Arg, App};
 use pi25_cfg::sites::parse_sites;
-use pi25_cfg::talkgroups::parse_talkgroups;
 use rtlsdr::TunerGains;
 use std::fs::File;
 use std::fs::OpenOptions;
@@ -105,13 +104,6 @@ fn main() {
     let mut conf = dirs::get_config_home().unwrap();
     conf.push("pi25");
 
-    let talkgroups = {
-        let mut conf = conf.clone();
-        conf.push("talkgroups.csv");
-
-        parse_talkgroups(File::open(conf).unwrap())
-    };
-
     let sites = {
         let mut conf = conf.clone();
         conf.push("p25.toml");
@@ -146,7 +138,7 @@ fn main() {
     let (tx_sdr_samp, rx_sdr_samp) = channel();
     let (tx_aud_ev, rx_aud_ev) = channel();
 
-    let mut app = MainApp::new(talkgroups, sites.clone(), site, rx_ui_ev,
+    let mut app = MainApp::new(sites.clone(), site, rx_ui_ev,
         tx_ctl_ev.clone(), tx_recv_ev.clone());
     let mut controller = Controller::new(control, rx_ctl_ev);
     let mut radio = BlockReader::new(tx_sdr_samp);

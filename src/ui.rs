@@ -1,16 +1,11 @@
 use p25::trunking::fields::TalkGroup;
 use pi25_cfg::sites::P25Sites;
-use pi25_cfg::talkgroups::TalkGroups;
 use sigpower::smeter::SignalLevel;
-use std::process::Command;
 use std::sync::Arc;
 use std::sync::mpsc::{Sender, Receiver};
 
 use recv::ReceiverEvent;
 use sdr::ControllerEvent;
-
-const MIN_VOL: usize = 80;
-const MAX_VOL: usize = 100;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum UIEvent {
@@ -21,7 +16,6 @@ pub enum UIEvent {
 
 struct AppState {
     pub sites: Arc<P25Sites>,
-    pub volume: usize,
     pub site: usize,
     pub talkgroup: TalkGroup,
     pub freq: u32,
@@ -30,15 +24,13 @@ struct AppState {
 
 pub struct MainApp {
     state: AppState,
-    talkgroups: TalkGroups,
     events: Receiver<UIEvent>,
     sdr: Sender<ControllerEvent>,
     recv: Sender<ReceiverEvent>,
 }
 
 impl MainApp {
-    pub fn new(talkgroups: TalkGroups,
-               sites: Arc<P25Sites>,
+    pub fn new(sites: Arc<P25Sites>,
                site: usize,
                events: Receiver<UIEvent>,
                sdr: Sender<ControllerEvent>,
@@ -48,13 +40,11 @@ impl MainApp {
         MainApp {
             state: AppState {
                 sites: sites,
-                volume: (MAX_VOL + MIN_VOL) / 2,
                 site: site,
                 talkgroup: TalkGroup::Nobody,
                 freq: 0,
                 signal: SignalLevel::None,
             },
-            talkgroups: talkgroups,
             events: events,
             sdr: sdr,
             recv: recv,
@@ -63,21 +53,7 @@ impl MainApp {
 
     fn init(self) -> Self {
         self.commit_site();
-        self.commit_volume();
-
         self
-    }
-
-    pub fn redraw(&mut self) {}
-
-    fn commit_volume(&self) {
-        assert!(Command::new("amixer")
-                        .arg("sset")
-                        .arg("PCM")
-                        .arg(format!("{}%", self.state.volume))
-                        .status()
-                        .unwrap()
-                        .success());
     }
 
     fn commit_site(&self) {
@@ -85,20 +61,10 @@ impl MainApp {
             .expect("unable to commit site");
     }
 
-    fn poweroff(&mut self) {
-        assert!(Command::new("sudo")
-                        .arg("systemctl")
-                        .arg("poweroff")
-                        .status()
-                        .unwrap()
-                        .success());
-    }
-
     pub fn run(&mut self) {
         loop {
             let event = self.events.recv().expect("unable to receive UI event");
             self.handle(event);
-            self.redraw();
         }
     }
 
