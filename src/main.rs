@@ -110,7 +110,7 @@ fn main() {
         None => 0,
     };
 
-    let output = BufWriter::new(
+    let audio_file = BufWriter::new(
         OpenOptions::new()
             .write(true)
             .open(args.value_of("audio").unwrap())
@@ -128,7 +128,7 @@ fn main() {
 
     let mut app = MainApp::new(sites.clone(), site, rx_ui_ev,
         tx_ctl_ev.clone(), tx_recv_ev.clone());
-    let mut audio = Audio::new(output, rx_aud_ev);
+    let mut audio = Audio::new(audio_file, rx_aud_ev);
     let mut receiver = P25Receiver::new(sites.clone(), samples_file, rx_recv_ev,
         tx_ui_ev.clone(), tx_ctl_ev.clone(), tx_aud_ev.clone());
 
