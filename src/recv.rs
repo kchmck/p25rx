@@ -1,14 +1,9 @@
 use fnv::FnvHasher;
-use p25::error::P25Error;
-use p25::message::data_unit::DataUnitReceiver;
-use p25::message::nid::{DataUnit, NetworkID};
-use p25::message::receiver::{MessageReceiver, MessageHandler};
+use p25::message::nid::DataUnit;
+use p25::message::receiver::{MessageReceiver};
 use p25::trunking::fields::{self, TalkGroup, ChannelParamsMap, Channel};
-use p25::trunking::tsbk::{TSBKFields, TSBKOpcode};
-use p25::voice::control::{LinkControlFields, LinkControlOpcode};
-use p25::voice::crypto::{CryptoAlgorithm, CryptoControlFields};
-use p25::voice::frame::VoiceFrame;
-use p25::voice::header::VoiceHeaderFields;
+use p25::trunking::tsbk::{TSBKOpcode};
+use p25::voice::crypto::CryptoAlgorithm;
 use pool::Checkout;
 use std::collections::HashSet;
 use std::hash::BuildHasherDefault;
@@ -28,6 +23,7 @@ pub enum ReceiverEvent {
 pub struct P25Receiver<W: Write> {
     control_freq: u32,
     samples_stream: Option<W>,
+    msg: MessageReceiver,
     channels: ChannelParamsMap,
     cur_talkgroup: TalkGroup,
     encrypted: HashSet<u16, BuildHasherDefault<FnvHasher>>,
@@ -48,10 +44,11 @@ impl<W: Write> P25Receiver<W> {
         P25Receiver {
             control_freq: 0,
             samples_stream: samples_stream,
-            events: events,
+            msg: MessageReceiver::new(),
             channels: ChannelParamsMap::default(),
             cur_talkgroup: TalkGroup::Default,
             encrypted: HashSet::default(),
+            events: events,
             ui: ui,
             sdr: sdr,
             audio: audio,
@@ -70,19 +67,84 @@ impl<W: Write> P25Receiver<W> {
     }
 
     pub fn run(&mut self) {
-        let mut messages = MessageReceiver::new();
-
         loop {
             match self.events.recv().expect("unable to receive baseband") {
                 ReceiverEvent::Baseband(samples) => {
                     for &s in samples.iter() {
-                        messages.feed(s, self);
+                        self.handle_sample(s);
                     }
 
                     self.write_samples(&samples[..]);
                 },
                 ReceiverEvent::SetControlFreq(freq) => self.control_freq = freq,
             }
+        }
+    }
+
+    fn handle_sample(&mut self, s: f32) {
+        use p25::message::receiver::MessageEvent::*;
+
+        let event = match self.msg.feed(s) {
+            Some(event) => event,
+            None => return,
+        };
+
+        match event {
+            Error(_) => {},
+            PacketNID(nid) => {
+                match nid.data_unit {
+                    DataUnit::VoiceLCTerminator | DataUnit::VoiceSimpleTerminator => {
+                        self.switch_control();
+                        self.audio.send(AudioEvent::EndTransmission)
+                            .expect("unable to send end of transmission");
+
+                        self.msg.recv.resync();
+                    },
+                    _ => {},
+                }
+            },
+            VoiceHeader(head) => self.handle_crypto(head.crypto_alg()),
+            LinkControl(_) => {},
+            CryptoControl(cc) => self.handle_crypto(cc.alg()),
+            LowSpeedDataFragment(_) => {},
+            VoiceFrame(vf) => {
+                self.audio.send(AudioEvent::VoiceFrame(vf))
+                    .expect("unable to send voice frame");
+            },
+            TrunkingControl(tsbk) => {
+                if tsbk.mfg() != 0 {
+                    return;
+                }
+
+                if !tsbk.crc_valid() {
+                    return;
+                }
+
+                let opcode = match tsbk.opcode() {
+                    Some(o) => o,
+                    None => return,
+                };
+
+                match opcode {
+                    TSBKOpcode::GroupVoiceUpdate => {
+                        let updates = fields::GroupTrafficUpdate::new(tsbk.payload())
+                                          .updates();
+
+                        for (ch, tg) in updates.iter().cloned() {
+                            if self.use_talkgroup(tg, ch) {
+                                self.msg.recv.resync();
+                                break;
+                            }
+                        }
+                    },
+                    TSBKOpcode::ChannelParamsUpdate => {
+                        let dec = fields::ChannelParamsUpdate::new(tsbk.payload());
+                        self.channels[dec.id() as usize] = Some(dec.params());
+                    },
+                    _ => {},
+                }
+            }
+            VoiceTerm(_) => {},
         }
     }
 
@@ -97,13 +159,13 @@ impl<W: Write> P25Receiver<W> {
         }
     }
 
-    fn handle_crypto(&mut self, recv: &mut DataUnitReceiver, alg: CryptoAlgorithm) {
+    fn handle_crypto(&mut self, alg: CryptoAlgorithm) {
         if let CryptoAlgorithm::Unencrypted = alg {
             return;
         }
 
         self.switch_control();
-        recv.resync();
+        self.msg.recv.resync();
 
         if let TalkGroup::Other(x) = self.cur_talkgroup {
             self.encrypted.insert(x);
@@ -129,73 +191,4 @@ impl<W: Write> P25Receiver<W> {
 
         true
     }
-}
-
-impl<W: Write> MessageHandler for P25Receiver<W> {
-    fn handle_error(&mut self, _: &mut DataUnitReceiver, _: P25Error) {}
-
-    fn handle_nid(&mut self, recv: &mut DataUnitReceiver, nid: NetworkID) {
-        match nid.data_unit {
-            DataUnit::VoiceLCTerminator | DataUnit::VoiceSimpleTerminator => {
-                self.switch_control();
-                self.audio.send(AudioEvent::EndTransmission)
-                    .expect("unable to send end of transmission");
-
-                recv.resync();
-            },
-            _ => {},
-        }
-    }
-
-    fn handle_header(&mut self, recv: &mut DataUnitReceiver, head: VoiceHeaderFields) {
-        self.handle_crypto(recv, head.crypto_alg());
-    }
-
-    fn handle_lc(&mut self, _: &mut DataUnitReceiver, _: LinkControlFields) {}
-
-    fn handle_cc(&mut self, recv: &mut DataUnitReceiver, cc: CryptoControlFields) {
-        self.handle_crypto(recv, cc.alg());
-    }
-
-    fn handle_data_frag(&mut self, _: &mut DataUnitReceiver, _: u32) {}
-
-    fn handle_frame(&mut self, _: &mut DataUnitReceiver, vf: VoiceFrame) {
-        self.audio.send(AudioEvent::VoiceFrame(vf))
-            .expect("unable to send voice frame");
-    }
-
-    fn handle_tsbk(&mut self, recv: &mut DataUnitReceiver, tsbk: TSBKFields) {
-        if tsbk.mfg() != 0 {
-            return;
-        }
-
-        if !tsbk.crc_valid() {
-            return;
-        }
-
-        let opcode = match tsbk.opcode() {
-            Some(o) => o,
-            None => return,
-        };
-
-        match opcode {
-            TSBKOpcode::GroupVoiceUpdate => {
-                let updates = fields::GroupTrafficUpdate::new(tsbk.payload()).updates();
-
-                for (ch, tg) in updates.iter().cloned() {
-                    if self.use_talkgroup(tg, ch) {
-                        recv.resync();
-                        break;
-                    }
-                }
-            },
-            TSBKOpcode::ChannelParamsUpdate => {
-                let dec = fields::ChannelParamsUpdate::new(tsbk.payload());
-                self.channels[dec.id() as usize] = Some(dec.params());
-            },
-            _ => {},
-        }
-    }
-
-    fn handle_term(&mut self, _: &mut DataUnitReceiver) {}
 }
