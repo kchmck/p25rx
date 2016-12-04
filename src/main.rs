@@ -153,19 +153,16 @@ fn main() {
     });
 
     thread::spawn(move || {
-        set_affinity(0);
         prctl::set_name("reader").unwrap();
         radio.run(reader);
     });
 
     thread::spawn(move || {
-        set_affinity(1);
         prctl::set_name("demod").unwrap();
         demod.run();
     });
 
     thread::spawn(move || {
-        set_affinity(2);
         prctl::set_name("receiver").unwrap();
         receiver.run();
     });
@@ -179,15 +176,4 @@ fn main() {
         prctl::set_name("ui").unwrap();
         app.run();
     }).join().unwrap();
-}
-
-fn set_affinity(cpu: usize) {
-    unsafe {
-        let mut cpus = std::mem::zeroed();
-
-        libc::CPU_ZERO(&mut cpus);
-        libc::CPU_SET(cpu, &mut cpus);
-
-        assert!(libc::sched_setaffinity(0, std::mem::size_of_val(&cpus), &cpus) == 0);
-    }
 }
