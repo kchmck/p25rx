@@ -71,6 +71,10 @@ fn main() {
              .short("c")
              .help("path to config file")
              .value_name("PATH"))
+        .arg(Arg::with_name("write")
+             .short("w")
+             .help("write baseband samples to FILE")
+             .value_name("FILE"))
         .get_matches();
 
     let ppm: i32 = match args.value_of("ppm") {
@@ -140,6 +144,9 @@ fn main() {
             .expect("unable to open audio output file")
     );
 
+    let samples_file = args.value_of("write")
+        .map(|path| File::create(path).expect("unable to open baseband file"));
+
     let (tx_ui_ev, rx_ui_ev) = channel();
     let (tx_ctl_ev, rx_ctl_ev) = channel();
     let (tx_recv_ev, rx_recv_ev) = channel();
@@ -152,8 +159,8 @@ fn main() {
     let mut radio = BlockReader::new(tx_sdr_samp);
     let mut demod = Demod::new(rx_sdr_samp, tx_ui_ev.clone(), tx_recv_ev.clone());
     let mut audio = Audio::new(output, rx_aud_ev);
-    let mut receiver = P25Receiver::new(sites.clone(), rx_recv_ev, tx_ui_ev.clone(),
-        tx_ctl_ev.clone(), tx_aud_ev.clone());
+    let mut receiver = P25Receiver::new(sites.clone(), samples_file, rx_recv_ev,
+        tx_ui_ev.clone(), tx_ctl_ev.clone(), tx_aud_ev.clone());
 
     thread::spawn(move || {
         prctl::set_name("controller").unwrap();

@@ -13,6 +13,7 @@ use pi25_cfg::sites::P25Sites;
 use pool::Checkout;
 use std::collections::HashSet;
 use std::hash::BuildHasherDefault;
+use std::io::Write;
 use std::sync::Arc;
 use std::sync::mpsc::{Sender, Receiver};
 use std;
@@ -26,8 +27,9 @@ pub enum ReceiverEvent {
     SetSite(usize),
 }
 
-pub struct P25Receiver {
+pub struct P25Receiver<W: Write> {
     sites: Arc<P25Sites>,
+    samples_stream: Option<W>,
     site: usize,
     channels: ChannelParamsMap,
     cur_talkgroup: TalkGroup,
@@ -38,16 +40,18 @@ pub struct P25Receiver {
     audio: Sender<AudioEvent>,
 }
 
-impl P25Receiver {
+impl<W: Write> P25Receiver<W> {
     pub fn new(sites: Arc<P25Sites>,
+               samples_stream: Option<W>,
                events: Receiver<ReceiverEvent>,
                ui: Sender<UIEvent>,
                sdr: Sender<ControllerEvent>,
                audio: Sender<AudioEvent>)
-        -> P25Receiver
+        -> Self
     {
         P25Receiver {
             sites: sites,
+            samples_stream: samples_stream,
             events: events,
             site: std::usize::MAX,
             channels: ChannelParamsMap::default(),
@@ -79,12 +83,25 @@ impl P25Receiver {
                     for &s in samples.iter() {
                         messages.feed(s, self);
                     }
+
+                    self.write_samples(&samples[..]);
                 },
                 ReceiverEvent::SetSite(site) => {
                     self.site = site;
                     self.switch_control();
                 },
             }
+        }
+    }
+
+    fn write_samples(&mut self, samples: &[f32]) {
+        if let Some(ref mut stream) = self.samples_stream {
+            stream.write_all(unsafe {
+                std::slice::from_raw_parts(
+                    samples.as_ptr() as *const u8,
+                    samples.len() * std::mem::size_of::<f32>()
+                )
+            }).expect("unable to write samples");
         }
     }
 
@@ -122,7 +139,7 @@ impl P25Receiver {
     }
 }
 
-impl MessageHandler for P25Receiver {
+impl<W: Write> MessageHandler for P25Receiver<W> {
     fn handle_error(&mut self, _: &mut DataUnitReceiver, _: P25Error) {}
 
     fn handle_nid(&mut self, recv: &mut DataUnitReceiver, nid: NetworkID) {
