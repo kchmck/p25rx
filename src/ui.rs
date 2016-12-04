@@ -57,8 +57,9 @@ impl MainApp {
     }
 
     fn commit_site(&self) {
-        self.recv.send(ReceiverEvent::SetSite(self.state.site))
-            .expect("unable to commit site");
+        self.recv.send(ReceiverEvent::SetControlFreq(
+            self.state.sites[self.state.site].control
+        )).expect("unable to commit site");
     }
 
     pub fn run(&mut self) {

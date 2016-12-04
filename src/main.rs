@@ -56,19 +56,11 @@ fn main() {
              .help("file/fifo for audio samples (f32le/8kHz/mono)")
              .required(true)
              .value_name("FILE"))
-        .arg(Arg::with_name("site")
-             .short("s")
-             .help("default site to use")
-             .value_name("SITE"))
         .arg(Arg::with_name("gain")
              .short("g")
              .help("tuner gain (use -g list to see all options)")
              .required(true)
              .value_name("GAIN"))
-        .arg(Arg::with_name("conf")
-             .short("c")
-             .help("path to config file")
-             .value_name("PATH"))
         .arg(Arg::with_name("write")
              .short("w")
              .help("write baseband samples to FILE")
@@ -127,8 +119,8 @@ fn main() {
     let mut app = MainApp::new(sites.clone(), site, rx_ui_ev,
         tx_ctl_ev.clone(), tx_recv_ev.clone());
     let mut audio = Audio::new(audio_file, rx_aud_ev);
-    let mut receiver = P25Receiver::new(sites.clone(), samples_file, rx_recv_ev,
-        tx_ui_ev.clone(), tx_ctl_ev.clone(), tx_aud_ev.clone());
+    let mut receiver = P25Receiver::new(samples_file, rx_recv_ev, tx_ui_ev.clone(),
+        tx_ctl_ev.clone(), tx_aud_ev.clone());
 
     let (mut control, reader) = rtlsdr::open(0).expect("unable to open rtlsdr");
 

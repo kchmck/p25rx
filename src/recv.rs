@@ -9,12 +9,10 @@ use p25::voice::control::{LinkControlFields, LinkControlOpcode};
 use p25::voice::crypto::{CryptoAlgorithm, CryptoControlFields};
 use p25::voice::frame::VoiceFrame;
 use p25::voice::header::VoiceHeaderFields;
-use pi25_cfg::sites::P25Sites;
 use pool::Checkout;
 use std::collections::HashSet;
 use std::hash::BuildHasherDefault;
 use std::io::Write;
-use std::sync::Arc;
 use std::sync::mpsc::{Sender, Receiver};
 use std;
 
@@ -24,13 +22,12 @@ use ui::UIEvent;
 
 pub enum ReceiverEvent {
     Baseband(Checkout<Vec<f32>>),
-    SetSite(usize),
+    SetControlFreq(u32),
 }
 
 pub struct P25Receiver<W: Write> {
-    sites: Arc<P25Sites>,
+    control_freq: u32,
     samples_stream: Option<W>,
-    site: usize,
     channels: ChannelParamsMap,
     cur_talkgroup: TalkGroup,
     encrypted: HashSet<u16, BuildHasherDefault<FnvHasher>>,
@@ -41,8 +38,7 @@ pub struct P25Receiver<W: Write> {
 }
 
 impl<W: Write> P25Receiver<W> {
-    pub fn new(sites: Arc<P25Sites>,
-               samples_stream: Option<W>,
+    pub fn new(samples_stream: Option<W>,
                events: Receiver<ReceiverEvent>,
                ui: Sender<UIEvent>,
                sdr: Sender<ControllerEvent>,
@@ -50,10 +46,9 @@ impl<W: Write> P25Receiver<W> {
         -> Self
     {
         P25Receiver {
-            sites: sites,
+            control_freq: 0,
             samples_stream: samples_stream,
             events: events,
-            site: std::usize::MAX,
             channels: ChannelParamsMap::default(),
             cur_talkgroup: TalkGroup::Default,
             encrypted: HashSet::default(),
@@ -64,7 +59,7 @@ impl<W: Write> P25Receiver<W> {
     }
 
     fn switch_control(&self) {
-        self.set_freq(self.sites[self.site].control);
+        self.set_freq(self.control_freq);
     }
 
     fn set_freq(&self, freq: u32) {
@@ -86,10 +81,7 @@ impl<W: Write> P25Receiver<W> {
 
                     self.write_samples(&samples[..]);
                 },
-                ReceiverEvent::SetSite(site) => {
-                    self.site = site;
-                    self.switch_control();
-                },
+                ReceiverEvent::SetControlFreq(freq) => self.control_freq = freq,
             }
         }
     }
