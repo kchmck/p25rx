@@ -5,7 +5,6 @@ use std::sync::Arc;
 use std::sync::mpsc::{Sender, Receiver};
 
 use recv::ReceiverEvent;
-use sdr::ControllerEvent;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum UIEvent {
@@ -25,7 +24,6 @@ struct AppState {
 pub struct MainApp {
     state: AppState,
     events: Receiver<UIEvent>,
-    sdr: Sender<ControllerEvent>,
     recv: Sender<ReceiverEvent>,
 }
 
@@ -33,7 +31,6 @@ impl MainApp {
     pub fn new(sites: Arc<P25Sites>,
                site: usize,
                events: Receiver<UIEvent>,
-               sdr: Sender<ControllerEvent>,
                recv: Sender<ReceiverEvent>)
         -> MainApp
     {
@@ -46,7 +43,6 @@ impl MainApp {
                 signal: SignalLevel::None,
             },
             events: events,
-            sdr: sdr,
             recv: recv,
         }.init()
     }
