@@ -20,9 +20,41 @@ pub enum ReceiverEvent {
     SetControlFreq(u32),
 }
 
-pub struct P25Receiver<W: Write> {
+pub trait SamplesExtra {
+    fn handle_samples(&mut self, samples: &[f32]);
+}
+
+pub struct NopExtra;
+
+impl SamplesExtra for NopExtra {
+    fn handle_samples(&mut self, _: &[f32]) {}
+}
+
+pub struct WriteSamples<W: Write> {
+    stream: W,
+}
+
+impl<W: Write> WriteSamples<W> {
+    pub fn new(stream: W) -> Self {
+        WriteSamples {
+            stream: stream,
+        }
+    }
+}
+
+impl<W: Write> SamplesExtra for WriteSamples<W> {
+    fn handle_samples(&mut self, samples: &[f32]) {
+        self.stream.write_all(unsafe {
+            std::slice::from_raw_parts(
+                samples.as_ptr() as *const u8,
+                samples.len() * std::mem::size_of::<f32>()
+            )
+        }).expect("unable to write baseband");
+    }
+}
+
+pub struct P25Receiver {
     control_freq: u32,
-    samples_stream: Option<W>,
     msg: MessageReceiver,
     channels: ChannelParamsMap,
     cur_talkgroup: TalkGroup,
@@ -33,9 +65,8 @@ pub struct P25Receiver<W: Write> {
     audio: Sender<AudioEvent>,
 }
 
-impl<W: Write> P25Receiver<W> {
-    pub fn new(samples_stream: Option<W>,
-               events: Receiver<ReceiverEvent>,
+impl P25Receiver {
+    pub fn new(events: Receiver<ReceiverEvent>,
                ui: Sender<UIEvent>,
                sdr: Sender<ControllerEvent>,
                audio: Sender<AudioEvent>)
@@ -43,7 +74,6 @@ impl<W: Write> P25Receiver<W> {
     {
         P25Receiver {
             control_freq: 0,
-            samples_stream: samples_stream,
             msg: MessageReceiver::new(),
             channels: ChannelParamsMap::default(),
             cur_talkgroup: TalkGroup::Default,
@@ -66,7 +96,7 @@ impl<W: Write> P25Receiver<W> {
             .expect("unable to set freq in sdr");
     }
 
-    pub fn run(&mut self) {
+    pub fn run<E: SamplesExtra>(&mut self, mut extra: E) {
         loop {
             match self.events.recv().expect("unable to receive baseband") {
                 ReceiverEvent::Baseband(samples) => {
@@ -74,7 +104,7 @@ impl<W: Write> P25Receiver<W> {
                         self.handle_sample(s);
                     }
 
-                    self.write_samples(&samples[..]);
+                    extra.handle_samples(&samples[..]);
                 },
                 ReceiverEvent::SetControlFreq(freq) => self.control_freq = freq,
             }
@@ -145,17 +175,6 @@ impl<W: Write> P25Receiver<W> {
                 }
             }
             VoiceTerm(_) => {},
-        }
-    }
-
-    fn write_samples(&mut self, samples: &[f32]) {
-        if let Some(ref mut stream) = self.samples_stream {
-            stream.write_all(unsafe {
-                std::slice::from_raw_parts(
-                    samples.as_ptr() as *const u8,
-                    samples.len() * std::mem::size_of::<f32>()
-                )
-            }).expect("unable to write samples");
         }
     }
 

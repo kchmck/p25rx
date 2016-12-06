@@ -119,8 +119,8 @@ fn main() {
     let mut app = MainApp::new(sites.clone(), site, rx_ui_ev,
         tx_ctl_ev.clone(), tx_recv_ev.clone());
     let mut audio = Audio::new(audio_file, rx_aud_ev);
-    let mut receiver = P25Receiver::new(samples_file, rx_recv_ev, tx_ui_ev.clone(),
-        tx_ctl_ev.clone(), tx_aud_ev.clone());
+    let mut receiver = P25Receiver::new(rx_recv_ev, tx_ui_ev.clone(), tx_ctl_ev.clone(),
+        tx_aud_ev.clone());
 
     let (mut control, reader) = rtlsdr::open(0).expect("unable to open rtlsdr");
 
@@ -170,7 +170,11 @@ fn main() {
 
     thread::spawn(move || {
         prctl::set_name("receiver").unwrap();
-        receiver.run();
+
+        match samples_file {
+            Some(f) => receiver.run(recv::WriteSamples::new(f)),
+            None => receiver.run(recv::NopExtra),
+        }
     });
 
     thread::spawn(move || {
