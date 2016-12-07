@@ -15,7 +15,6 @@ map_in_place = {version = "^1.0.0", git = "https://github.com/kchmck/map_in_plac
 num = "^0.1.34"
 p25 = {version = "^1.0.0", git = "https://github.com/kchmck/p25.rs"}
 p25_filts = {version = "^1.0.0", git = "https://github.com/kchmck/p25_filts.rs"}
-pi25_cfg = {version = "^1.0.0", git = "https://github.com/kchmck/pi25_cfg.rs"}
 pool = {version = "^0.1.3", git = "https://github.com/kchmck/pool"}
 prctl = "^1.0.0"
 rand = "^0.3.13"
@@ -25,7 +24,6 @@ sigpower = {version = "^1.0.0", git = "https://github.com/kchmck/sigpower.rs"}
 static_decimate = {version = "^1.0.0", git = "https://github.com/kchmck/static_decimate.rs"}
 static_fir = {version = "^1.0.0", git = "https://github.com/kchmck/static_fir.rs"}
 throttle = {version = "^1.0.0", git = "https://github.com/kchmck/throttle.rs"}
-xdg-basedir = "^1.0.0"
 
 [profile.release]
 panic = "abort"

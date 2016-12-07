@@ -66,14 +66,15 @@ pub struct P25Receiver {
 }
 
 impl P25Receiver {
-    pub fn new(events: Receiver<ReceiverEvent>,
+    pub fn new(freq: u32,
+               events: Receiver<ReceiverEvent>,
                ui: Sender<UIEvent>,
                sdr: Sender<ControllerEvent>,
                audio: Sender<AudioEvent>)
         -> Self
     {
         P25Receiver {
-            control_freq: 0,
+            control_freq: freq,
             msg: MessageReceiver::new(),
             channels: ChannelParamsMap::default(),
             cur_talkgroup: TalkGroup::Default,
@@ -82,7 +83,12 @@ impl P25Receiver {
             ui: ui,
             sdr: sdr,
             audio: audio,
-        }
+        }.init()
+    }
+
+    fn init(self) -> Self {
+        self.switch_control();
+        self
     }
 
     fn switch_control(&self) {

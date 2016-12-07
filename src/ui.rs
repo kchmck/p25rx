@@ -1,7 +1,5 @@
 use p25::trunking::fields::TalkGroup;
-use pi25_cfg::sites::P25Sites;
 use sigpower::smeter::SignalLevel;
-use std::sync::Arc;
 use std::sync::mpsc::{Sender, Receiver};
 
 use recv::ReceiverEvent;
@@ -14,8 +12,6 @@ pub enum UIEvent {
 }
 
 struct AppState {
-    pub sites: Arc<P25Sites>,
-    pub site: usize,
     pub talkgroup: TalkGroup,
     pub freq: u32,
     pub signal: SignalLevel,
@@ -28,34 +24,16 @@ pub struct MainApp {
 }
 
 impl MainApp {
-    pub fn new(sites: Arc<P25Sites>,
-               site: usize,
-               events: Receiver<UIEvent>,
-               recv: Sender<ReceiverEvent>)
-        -> MainApp
-    {
+    pub fn new(events: Receiver<UIEvent>, recv: Sender<ReceiverEvent>) -> Self {
         MainApp {
             state: AppState {
-                sites: sites,
-                site: site,
                 talkgroup: TalkGroup::Nobody,
                 freq: 0,
                 signal: SignalLevel::None,
             },
             events: events,
             recv: recv,
-        }.init()
-    }
-
-    fn init(self) -> Self {
-        self.commit_site();
-        self
-    }
-
-    fn commit_site(&self) {
-        self.recv.send(ReceiverEvent::SetControlFreq(
-            self.state.sites[self.state.site].control
-        )).expect("unable to commit site");
+        }
     }
 
     pub fn run(&mut self) {

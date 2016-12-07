@@ -8,7 +8,6 @@ extern crate map_in_place;
 extern crate num;
 extern crate p25;
 extern crate p25_filts;
-extern crate pi25_cfg;
 extern crate pool;
 extern crate prctl;
 extern crate rtlsdr;
@@ -16,20 +15,16 @@ extern crate rtlsdr_iq;
 extern crate sigpower;
 extern crate static_decimate;
 extern crate throttle;
-extern crate xdg_basedir;
 
 #[macro_use]
 extern crate static_fir;
 
 use clap::{Arg, App};
-use pi25_cfg::sites::parse_sites;
 use rtlsdr::TunerGains;
 use std::fs::{File, OpenOptions};
-use std::io::{BufWriter, Read};
-use std::sync::Arc;
+use std::io::BufWriter;
 use std::sync::mpsc::channel;
 use std::thread;
-use xdg_basedir::dirs;
 
 mod audio;
 mod demod;
@@ -65,38 +60,15 @@ fn main() {
              .short("w")
              .help("write baseband samples to FILE")
              .value_name("FILE"))
+        .arg(Arg::with_name("freq")
+             .short("f")
+             .help("frequency for initial control channel (Hz)")
+             .required(true)
+             .value_name("FREQ"))
         .get_matches();
 
     let ppm: i32 = match args.value_of("ppm") {
         Some(s) => s.parse().expect("invalid ppm"),
-        None => 0,
-    };
-
-    let sites = {
-        let mut file = match args.value_of("conf") {
-            Some(path) => File::open(path),
-            None => {
-                let mut conf = dirs::get_config_home().unwrap();
-                conf.push("pi25/p25.toml");
-
-                File::open(conf)
-            },
-        }.expect("unable to open config file");
-
-        let mut toml = String::new();
-        file.read_to_string(&mut toml).unwrap();
-
-        Arc::new(parse_sites(&toml).expect("error parsing config file"))
-    };
-
-    if sites.len() == 0 {
-        println!("no sites configured");
-        return;
-    }
-
-    let site: usize = match args.value_of("site") {
-        Some(name) => sites.iter().position(|s| s.name == name)
-            .expect("invalid site name"),
         None => 0,
     };
 
@@ -107,6 +79,8 @@ fn main() {
             .expect("unable to open audio output file")
     );
 
+    let freq: u32 = args.value_of("freq").unwrap().parse().expect("invalid frequency");
+
     let samples_file = args.value_of("write")
         .map(|path| File::create(path).expect("unable to open baseband file"));
 
@@ -116,11 +90,10 @@ fn main() {
     let (tx_sdr_samp, rx_sdr_samp) = channel();
     let (tx_aud_ev, rx_aud_ev) = channel();
 
-    let mut app = MainApp::new(sites.clone(), site, rx_ui_ev,
-        tx_ctl_ev.clone(), tx_recv_ev.clone());
+    let mut app = MainApp::new(rx_ui_ev, tx_recv_ev.clone());
     let mut audio = Audio::new(audio_file, rx_aud_ev);
-    let mut receiver = P25Receiver::new(rx_recv_ev, tx_ui_ev.clone(), tx_ctl_ev.clone(),
-        tx_aud_ev.clone());
+    let mut receiver = P25Receiver::new(freq, rx_recv_ev, tx_ui_ev.clone(),
+        tx_ctl_ev.clone(), tx_aud_ev.clone());
 
     let (mut control, reader) = rtlsdr::open(0).expect("unable to open rtlsdr");
 
