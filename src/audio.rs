@@ -1,5 +1,5 @@
-use imbe::decoder::{IMBEDecoder, CAIFrame};
 use imbe::consts::SAMPLES_PER_FRAME;
+use imbe::decoder::{IMBEDecoder, CAIFrame};
 use map_in_place::MapInPlace;
 use p25::voice::frame::VoiceFrame;
 use std::io::Write;
@@ -11,17 +11,15 @@ pub enum AudioEvent {
     EndTransmission,
 }
 
-pub struct Audio<W: Write> {
-    imbe: IMBEDecoder,
-    out: W,
+pub struct AudioEvents<W: Write> {
+    audio: AudioOutput<W>,
     queue: Receiver<AudioEvent>,
 }
 
-impl<W: Write> Audio<W> {
-    pub fn new(out: W, queue: Receiver<AudioEvent>) -> Audio<W> {
-        Audio {
-            imbe: IMBEDecoder::new(),
-            out: out,
+impl<W: Write> AudioEvents<W> {
+    pub fn new(audio: AudioOutput<W>, queue: Receiver<AudioEvent>) -> Self {
+        AudioEvents {
+            audio: audio,
             queue: queue,
         }
     }
@@ -29,20 +27,44 @@ impl<W: Write> Audio<W> {
     pub fn run(&mut self) {
         loop {
             match self.queue.recv().expect("unable to receive audio event") {
-                AudioEvent::VoiceFrame(vf) => {
-                    let frame = CAIFrame::new(vf.chunks, vf.errors);
-
-                    let mut samples = [0.0; SAMPLES_PER_FRAME];
-                    self.imbe.decode(frame, &mut samples);
-                    samples.map_in_place(|&s| s / 8192.0);
-
-                    self.out.write_all(unsafe {
-                        std::slice::from_raw_parts(samples.as_ptr() as *const u8,
-                            samples.len() * 4)
-                    }).unwrap();
-                },
-                AudioEvent::EndTransmission => self.out.flush().unwrap(),
+                AudioEvent::VoiceFrame(vf) => self.audio.play(&vf),
+                AudioEvent::EndTransmission => self.audio.flush(),
             }
         }
+    }
+}
+
+pub struct AudioOutput<W: Write> {
+    stream: W,
+    imbe: IMBEDecoder,
+}
+
+impl<W: Write> AudioOutput<W> {
+    pub fn new(stream: W) -> Self {
+        AudioOutput {
+            stream: stream,
+            imbe: IMBEDecoder::new(),
+        }
+    }
+
+    pub fn play(&mut self, frame: &VoiceFrame) {
+        let frame = CAIFrame::new(frame.chunks, frame.errors);
+
+        let mut samples = [0.0; SAMPLES_PER_FRAME];
+        self.imbe.decode(frame, &mut samples);
+
+        // TODO: AGC or proper volume normalization.
+        samples.map_in_place(|&s| s / 8192.0);
+
+        self.stream.write_all(unsafe {
+            std::slice::from_raw_parts(
+                samples.as_ptr() as *const u8,
+                samples.len() * std::mem::size_of::<f32>()
+            )
+        }).expect("unable to write audio samples");
+    }
+
+    pub fn flush(&mut self) {
+        self.stream.flush().expect("unable to flush audio samples")
     }
 }

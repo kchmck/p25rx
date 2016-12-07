@@ -33,7 +33,7 @@ mod sdr;
 mod ui;
 mod consts;
 
-use audio::Audio;
+use audio::{AudioOutput, AudioEvents};
 use consts::SDR_SAMPLE_RATE;
 use demod::Demod;
 use recv::P25Receiver;
@@ -72,12 +72,12 @@ fn main() {
         None => 0,
     };
 
-    let audio_file = BufWriter::new(
+    let audio_out = AudioOutput::new(BufWriter::new(
         OpenOptions::new()
             .write(true)
             .open(args.value_of("audio").unwrap())
             .expect("unable to open audio output file")
-    );
+    ));
 
     let freq: u32 = args.value_of("freq").unwrap().parse().expect("invalid frequency");
 
@@ -91,7 +91,7 @@ fn main() {
     let (tx_aud_ev, rx_aud_ev) = channel();
 
     let mut app = MainApp::new(rx_ui_ev, tx_recv_ev.clone());
-    let mut audio = Audio::new(audio_file, rx_aud_ev);
+    let mut audio = AudioEvents::new(audio_out, rx_aud_ev);
     let mut receiver = P25Receiver::new(freq, rx_recv_ev, tx_ui_ev.clone(),
         tx_ctl_ev.clone(), tx_aud_ev.clone());
 
