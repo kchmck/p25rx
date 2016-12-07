@@ -7,9 +7,7 @@ use p25::voice::crypto::CryptoAlgorithm;
 use pool::Checkout;
 use std::collections::HashSet;
 use std::hash::BuildHasherDefault;
-use std::io::Write;
 use std::sync::mpsc::{Sender, Receiver};
-use std;
 
 use audio::AudioEvent;
 use sdr::ControllerEvent;
@@ -18,39 +16,6 @@ use ui::UIEvent;
 pub enum ReceiverEvent {
     Baseband(Checkout<Vec<f32>>),
     SetControlFreq(u32),
-}
-
-pub trait SamplesExtra {
-    fn handle_samples(&mut self, samples: &[f32]);
-}
-
-pub struct NopExtra;
-
-impl SamplesExtra for NopExtra {
-    fn handle_samples(&mut self, _: &[f32]) {}
-}
-
-pub struct WriteSamples<W: Write> {
-    stream: W,
-}
-
-impl<W: Write> WriteSamples<W> {
-    pub fn new(stream: W) -> Self {
-        WriteSamples {
-            stream: stream,
-        }
-    }
-}
-
-impl<W: Write> SamplesExtra for WriteSamples<W> {
-    fn handle_samples(&mut self, samples: &[f32]) {
-        self.stream.write_all(unsafe {
-            std::slice::from_raw_parts(
-                samples.as_ptr() as *const u8,
-                samples.len() * std::mem::size_of::<f32>()
-            )
-        }).expect("unable to write baseband");
-    }
 }
 
 pub struct P25Receiver {
@@ -102,7 +67,9 @@ impl P25Receiver {
             .expect("unable to set freq in sdr");
     }
 
-    pub fn run<E: SamplesExtra>(&mut self, mut extra: E) {
+    pub fn run<F>(&mut self, mut cb: F)
+        where F: FnMut(&[f32])
+    {
         loop {
             match self.events.recv().expect("unable to receive baseband") {
                 ReceiverEvent::Baseband(samples) => {
@@ -110,7 +77,7 @@ impl P25Receiver {
                         self.handle_sample(s);
                     }
 
-                    extra.handle_samples(&samples[..]);
+                    cb(&samples[..]);
                 },
                 ReceiverEvent::SetControlFreq(freq) => self.control_freq = freq,
             }

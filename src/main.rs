@@ -22,7 +22,7 @@ extern crate static_fir;
 use clap::{Arg, App};
 use rtlsdr::TunerGains;
 use std::fs::{File, OpenOptions};
-use std::io::BufWriter;
+use std::io::{BufWriter, Write};
 use std::sync::mpsc::channel;
 use std::thread;
 
@@ -145,8 +145,15 @@ fn main() {
         prctl::set_name("receiver").unwrap();
 
         match samples_file {
-            Some(f) => receiver.run(recv::WriteSamples::new(f)),
-            None => receiver.run(recv::NopExtra),
+            Some(mut f) => receiver.run(|samples| {
+                f.write_all(unsafe {
+                    std::slice::from_raw_parts(
+                        samples.as_ptr() as *const u8,
+                        samples.len() * std::mem::size_of::<f32>()
+                    )
+                }).expect("unable to write baseband");
+            }),
+            None => receiver.run(|_| {}),
         }
     });
 
