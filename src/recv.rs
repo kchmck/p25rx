@@ -81,7 +81,10 @@ impl P25Receiver {
 
                     cb(&samples[..]);
                 },
-                ReceiverEvent::SetControlFreq(freq) => self.control_freq = freq,
+                ReceiverEvent::SetControlFreq(freq) => {
+                    self.control_freq = freq;
+                    self.switch_control();
+                },
             }
         }
     }
