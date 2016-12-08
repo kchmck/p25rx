@@ -36,7 +36,7 @@ mod consts;
 use audio::{AudioOutput, AudioEvents};
 use consts::SDR_SAMPLE_RATE;
 use demod::Demod;
-use recv::P25Receiver;
+use recv::{P25Receiver, ReplayReceiver};
 use sdr::{BlockReader, Controller};
 use ui::MainApp;
 
@@ -49,13 +49,15 @@ fn main() {
         .arg(Arg::with_name("audio")
              .short("a")
              .help("file/fifo for audio samples (f32le/8kHz/mono)")
-             .required(true)
              .value_name("FILE"))
         .arg(Arg::with_name("gain")
              .short("g")
              .help("tuner gain (use -g list to see all options)")
-             .required(true)
              .value_name("GAIN"))
+        .arg(Arg::with_name("replay")
+             .short("r")
+             .help("replay from baseband samples in FILE")
+             .value_name("FILE"))
         .arg(Arg::with_name("write")
              .short("w")
              .help("write baseband samples to FILE")
@@ -63,23 +65,35 @@ fn main() {
         .arg(Arg::with_name("freq")
              .short("f")
              .help("frequency for initial control channel (Hz)")
-             .required(true)
              .value_name("FREQ"))
         .get_matches();
+
+    let audio_out = AudioOutput::new(BufWriter::new(
+        OpenOptions::new()
+            .write(true)
+            .open(args.value_of("audio").expect("-a option is required"))
+            .expect("unable to open audio output file")
+    ));
+
+    match args.value_of("replay") {
+        Some(path) => {
+            let mut stream = File::open(path).expect("unable to open replay file");
+            let mut recv = ReplayReceiver::new(audio_out);
+
+            recv.replay(&mut stream);
+
+            return;
+        }
+        None => {},
+    }
 
     let ppm: i32 = match args.value_of("ppm") {
         Some(s) => s.parse().expect("invalid ppm"),
         None => 0,
     };
 
-    let audio_out = AudioOutput::new(BufWriter::new(
-        OpenOptions::new()
-            .write(true)
-            .open(args.value_of("audio").unwrap())
-            .expect("unable to open audio output file")
-    ));
-
-    let freq: u32 = args.value_of("freq").unwrap().parse().expect("invalid frequency");
+    let freq: u32 = args.value_of("freq").expect("-f option is required")
+        .parse().expect("invalid frequency");
 
     let samples_file = args.value_of("write")
         .map(|path| File::create(path).expect("unable to open baseband file"));
@@ -97,7 +111,7 @@ fn main() {
 
     let (mut control, reader) = rtlsdr::open(0).expect("unable to open rtlsdr");
 
-    match args.value_of("gain").unwrap() {
+    match args.value_of("gain").expect("-g option is required") {
         "list" => {
             let mut gains = TunerGains::default();
             let ngains = control.get_tuner_gains(&mut gains);

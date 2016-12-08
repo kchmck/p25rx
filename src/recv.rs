@@ -1,15 +1,17 @@
 use fnv::FnvHasher;
 use p25::message::nid::DataUnit;
-use p25::message::receiver::{MessageReceiver};
+use p25::message::receiver::MessageReceiver;
 use p25::trunking::fields::{self, TalkGroup, ChannelParamsMap, Channel};
 use p25::trunking::tsbk::{TSBKOpcode};
 use p25::voice::crypto::CryptoAlgorithm;
 use pool::Checkout;
 use std::collections::HashSet;
 use std::hash::BuildHasherDefault;
+use std::io::{Read, Write};
 use std::sync::mpsc::{Sender, Receiver};
+use std;
 
-use audio::AudioEvent;
+use audio::{AudioEvent, AudioOutput};
 use sdr::ControllerEvent;
 use ui::UIEvent;
 
@@ -182,5 +184,56 @@ impl P25Receiver {
         self.ui.send(UIEvent::SetTalkGroup(tg)).expect("unable to send talkgroup");
 
         true
+    }
+}
+
+pub struct ReplayReceiver<W: Write> {
+    audio: AudioOutput<W>,
+    msg: MessageReceiver,
+}
+
+impl<W: Write> ReplayReceiver<W> {
+    pub fn new(audio: AudioOutput<W>) -> Self {
+        ReplayReceiver {
+            audio: audio,
+            msg: MessageReceiver::new(),
+        }
+    }
+
+    pub fn replay<R: Read>(&mut self, stream: &mut R) {
+        let mut buf = [0; 32768];
+
+        loop {
+            let size = stream.read(&mut buf).expect("unable to read samples");
+
+            if size == 0 {
+                break;
+            }
+
+            let samples: &[f32] = unsafe {
+                std::slice::from_raw_parts(
+                    buf.as_ptr() as *const f32,
+                    size / std::mem::size_of::<f32>()
+                )
+            };
+
+            self.feed(samples);
+        }
+    }
+
+    fn feed(&mut self, samples: &[f32]) {
+        use p25::message::receiver::MessageEvent::*;
+
+        for &sample in samples {
+            let event = match self.msg.feed(sample) {
+                Some(event) => event,
+                None => continue,
+            };
+
+            match event {
+                VoiceFrame(vf) => self.audio.play(&vf),
+                _ => {},
+            }
+        }
     }
 }
