@@ -1,7 +1,6 @@
 use std::sync::mpsc::{Sender, Receiver};
 use pool::{Pool, Checkout};
 use rtlsdr::{Control, Reader};
-use std::io::Write;
 
 use consts::{BUF_SIZE_RAW, BUF_COUNT};
 
@@ -21,7 +20,7 @@ impl BlockReader {
 
         reader.read_async(BUF_COUNT as u32, BUF_SIZE_RAW as u32, |bytes| {
             let mut samples = pool.checkout().expect("unable to allocate samples");
-            (&mut samples[..]).write(bytes).unwrap();
+            (&mut samples[..]).copy_from_slice(bytes);
             self.chan.send(samples).expect("unable to send sdr samples");
         });
     }
