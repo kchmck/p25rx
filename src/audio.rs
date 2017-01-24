@@ -1,5 +1,6 @@
 use imbe::consts::SAMPLES_PER_FRAME;
-use imbe::decoder::{IMBEDecoder, CAIFrame};
+use imbe::decode::IMBEDecoder;
+use imbe::frame::ReceivedFrame;
 use map_in_place::MapInPlace;
 use p25::voice::frame::VoiceFrame;
 use std::io::Write;
@@ -48,7 +49,7 @@ impl<W: Write> AudioOutput<W> {
     }
 
     pub fn play(&mut self, frame: &VoiceFrame) {
-        let frame = CAIFrame::new(frame.chunks, frame.errors);
+        let frame = ReceivedFrame::new(frame.chunks, frame.errors);
 
         let mut samples = [0.0; SAMPLES_PER_FRAME];
         self.imbe.decode(frame, &mut samples);
