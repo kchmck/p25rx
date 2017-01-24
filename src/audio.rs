@@ -29,7 +29,10 @@ impl<W: Write> AudioEvents<W> {
         loop {
             match self.queue.recv().expect("unable to receive audio event") {
                 AudioEvent::VoiceFrame(vf) => self.audio.play(&vf),
-                AudioEvent::EndTransmission => self.audio.flush(),
+                AudioEvent::EndTransmission => {
+                   self.audio.flush();
+                   self.audio.reset();
+                },
             }
         }
     }
@@ -46,6 +49,10 @@ impl<W: Write> AudioOutput<W> {
             stream: stream,
             imbe: IMBEDecoder::new(),
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.imbe = IMBEDecoder::new();
     }
 
     pub fn play(&mut self, frame: &VoiceFrame) {
