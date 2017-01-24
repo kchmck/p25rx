@@ -1,5 +1,5 @@
 [root]
-name = "pi25"
+name = "p25rx"
 version = "1.0.0"
 dependencies = [
  "clap 2.19.1 (registry+https://github.com/rust-lang/crates.io-index)",

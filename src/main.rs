@@ -41,7 +41,7 @@ use sdr::{BlockReader, Controller};
 use ui::MainApp;
 
 fn main() {
-    let args = App::new("pi25")
+    let args = App::new("p25rx")
         .arg(Arg::with_name("ppm")
              .short("p")
              .help("ppm frequency adjustment")
