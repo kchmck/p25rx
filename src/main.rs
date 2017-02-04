@@ -75,16 +75,13 @@ fn main() {
             .expect("unable to open audio output file")
     ));
 
-    match args.value_of("replay") {
-        Some(path) => {
-            let mut stream = File::open(path).expect("unable to open replay file");
-            let mut recv = ReplayReceiver::new(audio_out);
+    if let Some(path) = args.value_of("replay") {
+        let mut stream = File::open(path).expect("unable to open replay file");
+        let mut recv = ReplayReceiver::new(audio_out);
 
-            recv.replay(&mut stream);
+        recv.replay(&mut stream);
 
-            return;
-        }
-        None => {},
+        return;
     }
 
     let ppm: i32 = match args.value_of("ppm") {
@@ -158,16 +155,17 @@ fn main() {
     thread::spawn(move || {
         prctl::set_name("receiver").unwrap();
 
-        match samples_file {
-            Some(mut f) => receiver.run(|samples| {
+        if let Some(mut f) = samples_file {
+            receiver.run(|samples| {
                 f.write_all(unsafe {
                     std::slice::from_raw_parts(
                         samples.as_ptr() as *const u8,
                         samples.len() * std::mem::size_of::<f32>()
                     )
                 }).expect("unable to write baseband");
-            }),
-            None => receiver.run(|_| {}),
+            })
+        } else {
+            receiver.run(|_| {})
         }
     });
 
