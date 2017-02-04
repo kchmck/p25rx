@@ -111,9 +111,8 @@ fn main() {
     match args.value_of("gain").expect("-g option is required") {
         "list" => {
             let mut gains = TunerGains::default();
-            let ngains = control.get_tuner_gains(&mut gains);
 
-            for g in &gains[..ngains] {
+            for g in control.tuner_gains(&mut gains) {
                 println!("{}", g);
             }
 
