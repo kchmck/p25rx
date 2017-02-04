@@ -1,4 +1,5 @@
 use std::sync::mpsc::{Sender, Receiver};
+
 use pool::{Pool, Checkout};
 use rtlsdr::{Control, Reader};
 

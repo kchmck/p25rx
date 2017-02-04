@@ -1,3 +1,9 @@
+use std::collections::HashSet;
+use std::hash::BuildHasherDefault;
+use std::io::{Read, Write};
+use std::sync::mpsc::{Sender, Receiver};
+use std;
+
 use fnv::FnvHasher;
 use p25::message::nid::DataUnit;
 use p25::message::receiver::MessageReceiver;
@@ -5,11 +11,6 @@ use p25::trunking::fields::{self, TalkGroup, ChannelParamsMap, Channel};
 use p25::trunking::tsbk::{TSBKOpcode};
 use p25::voice::crypto::CryptoAlgorithm;
 use pool::Checkout;
-use std::collections::HashSet;
-use std::hash::BuildHasherDefault;
-use std::io::{Read, Write};
-use std::sync::mpsc::{Sender, Receiver};
-use std;
 
 use audio::{AudioEvent, AudioOutput};
 use sdr::ControllerEvent;

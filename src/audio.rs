@@ -1,11 +1,12 @@
+use std::io::Write;
+use std::sync::mpsc::Receiver;
+use std;
+
 use imbe::consts::SAMPLES_PER_FRAME;
 use imbe::decode::IMBEDecoder;
 use imbe::frame::ReceivedFrame;
 use map_in_place::MapInPlace;
 use p25::voice::frame::VoiceFrame;
-use std::io::Write;
-use std::sync::mpsc::Receiver;
-use std;
 
 pub enum AudioEvent {
     VoiceFrame(VoiceFrame),

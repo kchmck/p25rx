@@ -19,12 +19,13 @@ extern crate throttle;
 #[macro_use]
 extern crate static_fir;
 
-use clap::{Arg, App};
-use rtlsdr::TunerGains;
 use std::fs::{File, OpenOptions};
 use std::io::{BufWriter, Write};
 use std::sync::mpsc::channel;
 use std::thread;
+
+use clap::{Arg, App};
+use rtlsdr::TunerGains;
 
 mod audio;
 mod demod;

@@ -1,19 +1,20 @@
+use std::sync::mpsc::{Sender, Receiver};
+use std;
+
 use collect_slice::CollectSlice;
 use demod_fm::FMDemod;
 use map_in_place::MapInPlace;
 use num::complex::Complex32;
 use num::traits::Zero;
+use p25_filts::{DecimFIR, BandpassFIR, DeemphFIR};
 use pool::{Pool, Checkout};
 use rtlsdr_iq::IQ;
 use sigpower::power;
 use sigpower::smeter::SignalLevel;
 use static_decimate::{Decimator, DecimationFactor};
 use static_fir::FIRFilter;
-use std::sync::mpsc::{Sender, Receiver};
-use std;
 use throttle::Throttler;
 
-use p25_filts::{DecimFIR, BandpassFIR, DeemphFIR};
 use ui::UIEvent;
 use recv::ReceiverEvent;
 use consts::{BUF_SIZE_COMPLEX, BASEBAND_SAMPLE_RATE};
