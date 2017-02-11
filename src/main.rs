@@ -69,16 +69,18 @@ fn main() {
              .value_name("FREQ"))
         .get_matches();
 
-    let audio_out = AudioOutput::new(BufWriter::new(
-        OpenOptions::new()
-            .write(true)
-            .open(args.value_of("audio").expect("-a option is required"))
-            .expect("unable to open audio output file")
-    ));
+    let get_audio_out = || {
+        AudioOutput::new(BufWriter::new(
+            OpenOptions::new()
+                .write(true)
+                .open(args.value_of("audio").expect("-a option is required"))
+                .expect("unable to open audio output file")
+        ))
+    };
 
     if let Some(path) = args.value_of("replay") {
         let mut stream = File::open(path).expect("unable to open replay file");
-        let mut recv = ReplayReceiver::new(audio_out);
+        let mut recv = ReplayReceiver::new(get_audio_out());
 
         recv.replay(&mut stream);
 
@@ -90,22 +92,8 @@ fn main() {
         None => 0,
     };
 
-    let freq: u32 = args.value_of("freq").expect("-f option is required")
-        .parse().expect("invalid frequency");
-
     let samples_file = args.value_of("write")
         .map(|path| File::create(path).expect("unable to open baseband file"));
-
-    let (tx_ui_ev, rx_ui_ev) = channel();
-    let (tx_ctl_ev, rx_ctl_ev) = channel();
-    let (tx_recv_ev, rx_recv_ev) = channel();
-    let (tx_sdr_samp, rx_sdr_samp) = channel();
-    let (tx_aud_ev, rx_aud_ev) = channel();
-
-    let mut app = MainApp::new(rx_ui_ev, tx_recv_ev.clone());
-    let mut audio = AudioEvents::new(audio_out, rx_aud_ev);
-    let mut receiver = P25Receiver::new(freq, rx_recv_ev, tx_ui_ev.clone(),
-        tx_ctl_ev.clone(), tx_aud_ev.clone());
 
     let (mut control, reader) = rtlsdr::open(0).expect("unable to open rtlsdr");
 
@@ -132,6 +120,20 @@ fn main() {
 
     assert!(control.set_sample_rate(SDR_SAMPLE_RATE));
     assert!(control.reset_buf());
+
+    let freq: u32 = args.value_of("freq").expect("-f option is required")
+        .parse().expect("invalid frequency");
+
+    let (tx_ui_ev, rx_ui_ev) = channel();
+    let (tx_ctl_ev, rx_ctl_ev) = channel();
+    let (tx_recv_ev, rx_recv_ev) = channel();
+    let (tx_sdr_samp, rx_sdr_samp) = channel();
+    let (tx_aud_ev, rx_aud_ev) = channel();
+
+    let mut app = MainApp::new(rx_ui_ev, tx_recv_ev.clone());
+    let mut audio = AudioEvents::new(get_audio_out(), rx_aud_ev);
+    let mut receiver = P25Receiver::new(freq, rx_recv_ev, tx_ui_ev.clone(),
+        tx_ctl_ev.clone(), tx_aud_ev.clone());
 
     let mut controller = Controller::new(control, rx_ctl_ev);
     let mut radio = BlockReader::new(tx_sdr_samp);
