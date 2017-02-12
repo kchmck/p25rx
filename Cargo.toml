@@ -21,7 +21,6 @@ prctl = "^1.0.0"
 rand = "^0.3.13"
 rtlsdr = {version = "2.0.0", git = "https://github.com/kchmck/rtlsdr.rs"}
 rtlsdr_iq = {version = "^1.0.0", git = "https://github.com/kchmck/rtlsdr_iq.rs"}
-sigpower = {version = "^1.0.0", git = "https://github.com/kchmck/sigpower.rs"}
 static_decimate = {version = "^1.0.0", git = "https://github.com/kchmck/static_decimate.rs"}
 static_fir = {version = "^1.0.0", git = "https://github.com/kchmck/static_fir.rs"}
 throttle = {version = "^1.0.0", git = "https://github.com/kchmck/throttle.rs"}

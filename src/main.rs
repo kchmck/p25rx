@@ -12,7 +12,6 @@ extern crate pool;
 extern crate prctl;
 extern crate rtlsdr;
 extern crate rtlsdr_iq;
-extern crate sigpower;
 extern crate static_decimate;
 extern crate throttle;
 

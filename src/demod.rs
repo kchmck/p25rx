@@ -9,7 +9,6 @@ use num::traits::Zero;
 use p25_filts::{DecimFIR, BandpassFIR, DeemphFIR};
 use pool::{Pool, Checkout};
 use rtlsdr_iq::IQ;
-use sigpower::power;
 use static_decimate::{Decimator, DecimationFactor};
 use static_fir::FIRFilter;
 use throttle::Throttler;
@@ -81,7 +80,7 @@ impl DemodTask {
             samples.map_in_place(|&s| self.bandpass.feed(s));
 
             notifier.throttle(|| {
-                let power = power::power_dbm(&samples[..], IMPEDANCE) + POWER_ADJUST;
+                let power = power_dbm(&samples[..], IMPEDANCE) + POWER_ADJUST;
 
                 self.hub.send(HubEvent::UpdateSignalPower(power))
                     .expect("unable to send signal power");
@@ -108,4 +107,18 @@ struct Decimate5;
 
 impl DecimationFactor for Decimate5 {
     fn factor() -> u32 { 5 }
+}
+
+/// Calculate the power (dBm) into the resistance (ohms) of the given samples.
+pub fn power_dbm(samples: &[Complex32], resistance: f32) -> f32 {
+    // Units of Watt-ohms
+    let avg = samples.iter().fold(0.0, |s, x| {
+        s + x.norm_sqr()
+    }) / samples.len() as f32;
+
+    // Power in Watts.
+    let power = avg / resistance;
+
+    // Convert Watts to dBm.
+    30.0 + 10.0 * power.log10()
 }
