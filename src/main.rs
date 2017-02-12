@@ -67,6 +67,10 @@ fn main() {
              .short("f")
              .help("frequency for initial control channel (Hz)")
              .value_name("FREQ"))
+        .arg(Arg::with_name("device")
+             .short("d")
+             .help("rtlsdr device index (use -d list to show all)")
+             .value_name("INDEX"))
         .get_matches();
 
     let get_audio_out = || {
@@ -95,7 +99,19 @@ fn main() {
     let samples_file = args.value_of("write")
         .map(|path| File::create(path).expect("unable to open baseband file"));
 
-    let (mut control, reader) = rtlsdr::open(0).expect("unable to open rtlsdr");
+    let dev: u32 = match args.value_of("device") {
+        Some("list") => {
+            for (idx, name) in rtlsdr::devices().enumerate() {
+                println!("{}: {}", idx, name.to_str().unwrap());
+            }
+
+            return;
+        },
+        Some(s) => s.parse().expect("invalid device index"),
+        None => 0,
+    };
+
+    let (mut control, reader) = rtlsdr::open(dev).expect("unable to open rtlsdr");
 
     match args.value_of("gain").expect("-g option is required") {
         "list" => {
