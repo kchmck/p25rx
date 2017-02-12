@@ -36,7 +36,7 @@ mod consts;
 
 use audio::{AudioOutput, AudioTask};
 use consts::SDR_SAMPLE_RATE;
-use demod::Demod;
+use demod::DemodTask;
 use recv::{P25Receiver, ReplayReceiver};
 use sdr::{ReadTask, ControlTask};
 use ui::MainApp;
@@ -149,7 +149,7 @@ fn main() {
 
     let mut controller = ControlTask::new(control, rx_ctl_ev);
     let mut radio = ReadTask::new(tx_sdr_samp);
-    let mut demod = Demod::new(rx_sdr_samp, tx_ui_ev.clone(), tx_recv_ev.clone());
+    let mut demod = DemodTask::new(rx_sdr_samp, tx_ui_ev.clone(), tx_recv_ev.clone());
 
     thread::spawn(move || {
         prctl::set_name("controller").unwrap();

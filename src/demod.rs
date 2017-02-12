@@ -23,7 +23,7 @@ const FM_DEV: u32 = 5000;
 const POWER_ADJUST: f32 = -106.0;
 const IMPEDANCE: f32 = 50.0;
 
-pub struct Demod {
+pub struct DemodTask {
     decim: Decimator<Decimate5, DecimFIR>,
     bandpass: FIRFilter<BandpassFIR>,
     deemph: FIRFilter<DeemphFIR>,
@@ -33,13 +33,13 @@ pub struct Demod {
     chan: Sender<ReceiverEvent>,
 }
 
-impl Demod {
+impl DemodTask {
     pub fn new(reader: Receiver<Checkout<Vec<u8>>>,
                ui: Sender<UIEvent>,
                chan: Sender<ReceiverEvent>)
-        -> Demod
+        -> Self
     {
-        Demod {
+        DemodTask {
             decim: Decimator::new(),
             bandpass: FIRFilter::new(),
             deemph: FIRFilter::new(),
