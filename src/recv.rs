@@ -64,7 +64,7 @@ impl RecvTask {
     }
 
     fn set_freq(&self, freq: u32) {
-        self.hub.send(HubEvent::SetFreq(freq))
+        self.hub.send(HubEvent::UpdateCurFreq(freq))
             .expect("unable to update freq in UI");
         self.sdr.send(ControlTaskEvent::SetFreq(freq))
             .expect("unable to set freq in sdr");

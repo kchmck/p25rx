@@ -7,7 +7,7 @@ use recv::ReceiverEvent;
 pub enum HubEvent {
     UpdateTalkgroup(TalkGroup),
     UpdateSignalPower(f32),
-    SetFreq(u32),
+    UpdateCurFreq(u32),
 }
 
 struct AppState {
@@ -46,7 +46,7 @@ impl MainApp {
         match event {
             HubEvent::UpdateTalkgroup(tg) => self.state.talkgroup = tg,
             HubEvent::UpdateSignalPower(p) => self.state.signal = p,
-            HubEvent::SetFreq(freq) =>  self.state.freq = freq,
+            HubEvent::UpdateCurFreq(freq) =>  self.state.freq = freq,
         }
     }
 }
