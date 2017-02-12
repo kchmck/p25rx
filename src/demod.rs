@@ -10,7 +10,6 @@ use p25_filts::{DecimFIR, BandpassFIR, DeemphFIR};
 use pool::{Pool, Checkout};
 use rtlsdr_iq::IQ;
 use sigpower::power;
-use sigpower::smeter::SignalLevel;
 use static_decimate::{Decimator, DecimationFactor};
 use static_fir::FIRFilter;
 use throttle::Throttler;
@@ -82,11 +81,10 @@ impl DemodTask {
             samples.map_in_place(|&s| self.bandpass.feed(s));
 
             notifier.throttle(|| {
-                let level = SignalLevel::from_dbm(
-                    power::power_dbm(&samples[..], IMPEDANCE) + POWER_ADJUST);
+                let power = power::power_dbm(&samples[..], IMPEDANCE) + POWER_ADJUST;
 
-                self.hub.send(HubEvent::SetSignalLevel(level))
-                    .expect("unable to send signal level");
+                self.hub.send(HubEvent::UpdateSignalPower(power))
+                    .expect("unable to send signal power");
             });
 
             let mut baseband = pool.checkout().expect("unable to allocate baseband");

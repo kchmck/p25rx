@@ -1,5 +1,4 @@
 use p25::trunking::fields::TalkGroup;
-use sigpower::smeter::SignalLevel;
 use std::sync::mpsc::{Sender, Receiver};
 
 use recv::ReceiverEvent;
@@ -7,14 +6,14 @@ use recv::ReceiverEvent;
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum HubEvent {
     SetTalkGroup(TalkGroup),
-    SetSignalLevel(SignalLevel),
+    UpdateSignalPower(f32),
     SetFreq(u32),
 }
 
 struct AppState {
     pub talkgroup: TalkGroup,
     pub freq: u32,
-    pub signal: SignalLevel,
+    pub signal: f32,
 }
 
 pub struct MainApp {
@@ -29,7 +28,7 @@ impl MainApp {
             state: AppState {
                 talkgroup: TalkGroup::Nobody,
                 freq: 0,
-                signal: SignalLevel::None,
+                signal: 0.0,
             },
             events: events,
             recv: recv,
@@ -46,7 +45,7 @@ impl MainApp {
     fn handle(&mut self, event: HubEvent) {
         match event {
             HubEvent::SetTalkGroup(tg) => self.state.talkgroup = tg,
-            HubEvent::SetSignalLevel(s) => self.state.signal = s,
+            HubEvent::UpdateSignalPower(p) => self.state.signal = p,
             HubEvent::SetFreq(freq) =>  self.state.freq = freq,
         }
     }
