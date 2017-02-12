@@ -10,7 +10,7 @@ pub struct ReadTask {
 }
 
 impl ReadTask {
-    pub fn new(chan: Sender<Checkout<Vec<u8>>>) -> ReadTask {
+    pub fn new(chan: Sender<Checkout<Vec<u8>>>) -> Self {
         ReadTask {
             chan: chan,
         }
@@ -37,7 +37,7 @@ pub struct ControlTask {
 }
 
 impl ControlTask {
-    pub fn new(sdr: Controller, events: Receiver<ControlTaskEvent>) -> ControlTask {
+    pub fn new(sdr: Controller, events: Receiver<ControlTaskEvent>) -> Self {
         ControlTask {
             sdr: sdr,
             events: events,
