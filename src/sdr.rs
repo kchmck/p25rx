@@ -5,13 +5,13 @@ use rtlsdr::{Controller, Reader};
 
 use consts::{BUF_SIZE_RAW, BUF_COUNT};
 
-pub struct BlockReader {
+pub struct ReadTask {
     chan: Sender<Checkout<Vec<u8>>>,
 }
 
-impl BlockReader {
-    pub fn new(chan: Sender<Checkout<Vec<u8>>>) -> BlockReader {
-        BlockReader {
+impl ReadTask {
+    pub fn new(chan: Sender<Checkout<Vec<u8>>>) -> ReadTask {
+        ReadTask {
             chan: chan,
         }
     }
