@@ -13,14 +13,14 @@ pub enum AudioEvent {
     EndTransmission,
 }
 
-pub struct AudioEvents<W: Write> {
+pub struct AudioTask<W: Write> {
     audio: AudioOutput<W>,
     queue: Receiver<AudioEvent>,
 }
 
-impl<W: Write> AudioEvents<W> {
+impl<W: Write> AudioTask<W> {
     pub fn new(audio: AudioOutput<W>, queue: Receiver<AudioEvent>) -> Self {
-        AudioEvents {
+        AudioTask {
             audio: audio,
             queue: queue,
         }
