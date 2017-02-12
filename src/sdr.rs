@@ -27,18 +27,18 @@ impl BlockReader {
     }
 }
 
-pub enum ControllerEvent {
+pub enum ControlTaskEvent {
     SetFreq(u32),
 }
 
-pub struct Controller {
+pub struct ControlTask {
     sdr: Control,
-    events: Receiver<ControllerEvent>,
+    events: Receiver<ControlTaskEvent>,
 }
 
-impl Controller {
-    pub fn new(sdr: Control, events: Receiver<ControllerEvent>) -> Controller {
-        Controller {
+impl ControlTask {
+    pub fn new(sdr: Control, events: Receiver<ControlTaskEvent>) -> ControlTask {
+        ControlTask {
             sdr: sdr,
             events: events,
         }
@@ -47,8 +47,10 @@ impl Controller {
     pub fn run(&mut self) {
         loop {
             match self.events.recv().expect("unable to receive controller event") {
-                ControllerEvent::SetFreq(freq) =>
-                    assert!(self.sdr.set_center_freq(freq)),
+                ControlTaskEvent::SetFreq(freq) => {
+                    println!("SetFreq({})", freq);
+                    self.sdr.set_center_freq(freq).expect("unable to set frequency");
+                },
             }
         }
     }

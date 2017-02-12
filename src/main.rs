@@ -38,7 +38,7 @@ use audio::{AudioOutput, AudioEvents};
 use consts::SDR_SAMPLE_RATE;
 use demod::Demod;
 use recv::{P25Receiver, ReplayReceiver};
-use sdr::{BlockReader, Controller};
+use sdr::{BlockReader, ControlTask};
 use ui::MainApp;
 
 fn main() {
@@ -135,7 +135,7 @@ fn main() {
     let mut receiver = P25Receiver::new(freq, rx_recv_ev, tx_ui_ev.clone(),
         tx_ctl_ev.clone(), tx_aud_ev.clone());
 
-    let mut controller = Controller::new(control, rx_ctl_ev);
+    let mut controller = ControlTask::new(control, rx_ctl_ev);
     let mut radio = BlockReader::new(tx_sdr_samp);
     let mut demod = Demod::new(rx_sdr_samp, tx_ui_ev.clone(), tx_recv_ev.clone());
 

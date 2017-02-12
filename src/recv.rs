@@ -13,7 +13,7 @@ use p25::voice::crypto::CryptoAlgorithm;
 use pool::Checkout;
 
 use audio::{AudioEvent, AudioOutput};
-use sdr::ControllerEvent;
+use sdr::ControlTaskEvent;
 use ui::UIEvent;
 
 pub enum ReceiverEvent {
@@ -29,7 +29,7 @@ pub struct P25Receiver {
     encrypted: HashSet<u16, BuildHasherDefault<FnvHasher>>,
     events: Receiver<ReceiverEvent>,
     ui: Sender<UIEvent>,
-    sdr: Sender<ControllerEvent>,
+    sdr: Sender<ControlTaskEvent>,
     audio: Sender<AudioEvent>,
 }
 
@@ -37,7 +37,7 @@ impl P25Receiver {
     pub fn new(freq: u32,
                events: Receiver<ReceiverEvent>,
                ui: Sender<UIEvent>,
-               sdr: Sender<ControllerEvent>,
+               sdr: Sender<ControlTaskEvent>,
                audio: Sender<AudioEvent>)
         -> Self
     {
@@ -66,7 +66,7 @@ impl P25Receiver {
     fn set_freq(&self, freq: u32) {
         self.ui.send(UIEvent::SetFreq(freq))
             .expect("unable to update freq in UI");
-        self.sdr.send(ControllerEvent::SetFreq(freq))
+        self.sdr.send(ControlTaskEvent::SetFreq(freq))
             .expect("unable to set freq in sdr");
     }
 
