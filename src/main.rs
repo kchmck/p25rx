@@ -28,18 +28,18 @@ use clap::{Arg, App};
 use rtlsdr::TunerGains;
 
 mod audio;
+mod consts;
 mod demod;
+mod hub;
 mod recv;
 mod sdr;
-mod ui;
-mod consts;
 
 use audio::{AudioOutput, AudioTask};
 use consts::SDR_SAMPLE_RATE;
 use demod::DemodTask;
 use recv::{RecvTask, ReplayReceiver};
 use sdr::{ReadTask, ControlTask};
-use ui::MainApp;
+use hub::MainApp;
 
 fn main() {
     let args = App::new("p25rx")
@@ -189,7 +189,7 @@ fn main() {
     });
 
     thread::spawn(move || {
-        prctl::set_name("ui").unwrap();
+        prctl::set_name("hub").unwrap();
         app.run();
     }).join().unwrap();
 }

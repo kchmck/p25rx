@@ -5,7 +5,7 @@ use std::sync::mpsc::{Sender, Receiver};
 use recv::ReceiverEvent;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum UIEvent {
+pub enum HubEvent {
     SetTalkGroup(TalkGroup),
     SetSignalLevel(SignalLevel),
     SetFreq(u32),
@@ -19,12 +19,12 @@ struct AppState {
 
 pub struct MainApp {
     state: AppState,
-    events: Receiver<UIEvent>,
+    events: Receiver<HubEvent>,
     recv: Sender<ReceiverEvent>,
 }
 
 impl MainApp {
-    pub fn new(events: Receiver<UIEvent>, recv: Sender<ReceiverEvent>) -> Self {
+    pub fn new(events: Receiver<HubEvent>, recv: Sender<ReceiverEvent>) -> Self {
         MainApp {
             state: AppState {
                 talkgroup: TalkGroup::Nobody,
@@ -43,11 +43,11 @@ impl MainApp {
         }
     }
 
-    fn handle(&mut self, event: UIEvent) {
+    fn handle(&mut self, event: HubEvent) {
         match event {
-            UIEvent::SetTalkGroup(tg) => self.state.talkgroup = tg,
-            UIEvent::SetSignalLevel(s) => self.state.signal = s,
-            UIEvent::SetFreq(freq) =>  self.state.freq = freq,
+            HubEvent::SetTalkGroup(tg) => self.state.talkgroup = tg,
+            HubEvent::SetSignalLevel(s) => self.state.signal = s,
+            HubEvent::SetFreq(freq) =>  self.state.freq = freq,
         }
     }
 }

@@ -15,7 +15,7 @@ use static_decimate::{Decimator, DecimationFactor};
 use static_fir::FIRFilter;
 use throttle::Throttler;
 
-use ui::UIEvent;
+use hub::HubEvent;
 use recv::ReceiverEvent;
 use consts::{BUF_SIZE_COMPLEX, BASEBAND_SAMPLE_RATE};
 
@@ -29,13 +29,13 @@ pub struct DemodTask {
     deemph: FIRFilter<DeemphFIR>,
     demod: FMDemod,
     reader: Receiver<Checkout<Vec<u8>>>,
-    ui: Sender<UIEvent>,
+    hub: Sender<HubEvent>,
     chan: Sender<ReceiverEvent>,
 }
 
 impl DemodTask {
     pub fn new(reader: Receiver<Checkout<Vec<u8>>>,
-               ui: Sender<UIEvent>,
+               hub: Sender<HubEvent>,
                chan: Sender<ReceiverEvent>)
         -> Self
     {
@@ -45,7 +45,7 @@ impl DemodTask {
             deemph: FIRFilter::new(),
             demod: FMDemod::new(FM_DEV as f32 / BASEBAND_SAMPLE_RATE as f32),
             reader: reader,
-            ui: ui,
+            hub: hub,
             chan: chan,
         }
     }
@@ -85,7 +85,7 @@ impl DemodTask {
                 let level = SignalLevel::from_dbm(
                     power::power_dbm(&samples[..], IMPEDANCE) + POWER_ADJUST);
 
-                self.ui.send(UIEvent::SetSignalLevel(level))
+                self.hub.send(HubEvent::SetSignalLevel(level))
                     .expect("unable to send signal level");
             });
 
