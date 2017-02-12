@@ -185,7 +185,7 @@ impl RecvTask {
         self.cur_talkgroup = tg;
 
         self.set_freq(freq);
-        self.hub.send(HubEvent::SetTalkGroup(tg)).expect("unable to send talkgroup");
+        self.hub.send(HubEvent::UpdateTalkgroup(tg)).expect("unable to send talkgroup");
 
         true
     }

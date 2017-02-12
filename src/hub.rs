@@ -5,7 +5,7 @@ use recv::ReceiverEvent;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum HubEvent {
-    SetTalkGroup(TalkGroup),
+    UpdateTalkgroup(TalkGroup),
     UpdateSignalPower(f32),
     SetFreq(u32),
 }
@@ -44,7 +44,7 @@ impl MainApp {
 
     fn handle(&mut self, event: HubEvent) {
         match event {
-            HubEvent::SetTalkGroup(tg) => self.state.talkgroup = tg,
+            HubEvent::UpdateTalkgroup(tg) => self.state.talkgroup = tg,
             HubEvent::UpdateSignalPower(p) => self.state.signal = p,
             HubEvent::SetFreq(freq) =>  self.state.freq = freq,
         }
