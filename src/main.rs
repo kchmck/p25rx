@@ -37,7 +37,7 @@ mod consts;
 use audio::{AudioOutput, AudioTask};
 use consts::SDR_SAMPLE_RATE;
 use demod::DemodTask;
-use recv::{P25Receiver, ReplayReceiver};
+use recv::{RecvTask, ReplayReceiver};
 use sdr::{ReadTask, ControlTask};
 use ui::MainApp;
 
@@ -144,7 +144,7 @@ fn main() {
 
     let mut app = MainApp::new(rx_ui_ev, tx_recv_ev.clone());
     let mut audio = AudioTask::new(get_audio_out(), rx_aud_ev);
-    let mut receiver = P25Receiver::new(freq, rx_recv_ev, tx_ui_ev.clone(),
+    let mut receiver = RecvTask::new(freq, rx_recv_ev, tx_ui_ev.clone(),
         tx_ctl_ev.clone(), tx_aud_ev.clone());
 
     let mut controller = ControlTask::new(control, rx_ctl_ev);

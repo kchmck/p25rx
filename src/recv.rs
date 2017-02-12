@@ -21,7 +21,7 @@ pub enum ReceiverEvent {
     SetControlFreq(u32),
 }
 
-pub struct P25Receiver {
+pub struct RecvTask {
     control_freq: u32,
     msg: MessageReceiver,
     channels: ChannelParamsMap,
@@ -33,7 +33,7 @@ pub struct P25Receiver {
     audio: Sender<AudioEvent>,
 }
 
-impl P25Receiver {
+impl RecvTask {
     pub fn new(freq: u32,
                events: Receiver<ReceiverEvent>,
                ui: Sender<UIEvent>,
@@ -41,7 +41,7 @@ impl P25Receiver {
                audio: Sender<AudioEvent>)
         -> Self
     {
-        P25Receiver {
+        RecvTask {
             control_freq: freq,
             msg: MessageReceiver::new(),
             channels: ChannelParamsMap::default(),
