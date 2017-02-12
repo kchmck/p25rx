@@ -1,7 +1,7 @@
 use std::sync::mpsc::{Sender, Receiver};
 
 use pool::{Pool, Checkout};
-use rtlsdr::{Control, Reader};
+use rtlsdr::{Controller, Reader};
 
 use consts::{BUF_SIZE_RAW, BUF_COUNT};
 
@@ -23,7 +23,7 @@ impl BlockReader {
             let mut samples = pool.checkout().expect("unable to allocate samples");
             (&mut samples[..]).copy_from_slice(bytes);
             self.chan.send(samples).expect("unable to send sdr samples");
-        });
+        }).expect("error in async read");
     }
 }
 
@@ -32,12 +32,12 @@ pub enum ControlTaskEvent {
 }
 
 pub struct ControlTask {
-    sdr: Control,
+    sdr: Controller,
     events: Receiver<ControlTaskEvent>,
 }
 
 impl ControlTask {
-    pub fn new(sdr: Control, events: Receiver<ControlTaskEvent>) -> ControlTask {
+    pub fn new(sdr: Controller, events: Receiver<ControlTaskEvent>) -> ControlTask {
         ControlTask {
             sdr: sdr,
             events: events,

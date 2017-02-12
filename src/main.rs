@@ -109,17 +109,13 @@ fn main() {
 
             return;
         },
-        "auto" => assert!(control.enable_agc()),
-        s => assert!(control.set_tuner_gain(s.parse().expect("invalid gain"))),
+        "auto" => control.enable_agc().expect("unable to enable agc"),
+        s => control.set_tuner_gain(s.parse().expect("invalid gain"))
+                .expect("unable to set gain")
     }
 
-    // librtlsdr doesn't like zero ppm.
-    if ppm != 0 {
-        assert!(control.set_ppm(ppm));
-    }
-
-    assert!(control.set_sample_rate(SDR_SAMPLE_RATE));
-    assert!(control.reset_buf());
+    control.set_ppm(ppm).expect("unable to set ppm");
+    control.set_sample_rate(SDR_SAMPLE_RATE).expect("unable to set sample rate");
 
     let freq: u32 = args.value_of("freq").expect("-f option is required")
         .parse().expect("invalid frequency");
