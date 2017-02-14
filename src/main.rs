@@ -1,5 +1,6 @@
 extern crate clap;
 extern crate collect_slice;
+extern crate crossbeam;
 extern crate demod_fm;
 extern crate fnv;
 extern crate imbe;
@@ -21,7 +22,6 @@ extern crate static_fir;
 use std::fs::{File, OpenOptions};
 use std::io::{BufWriter, Write};
 use std::sync::mpsc::channel;
-use std::thread;
 
 use clap::{Arg, App};
 use rtlsdr::TunerGains;
@@ -150,45 +150,47 @@ fn main() {
     let mut radio = ReadTask::new(tx_sdr_samp);
     let mut demod = DemodTask::new(rx_sdr_samp, tx_ui_ev.clone(), tx_recv_ev.clone());
 
-    thread::spawn(move || {
-        prctl::set_name("controller").unwrap();
-        controller.run()
+    crossbeam::scope(|scope| {
+        scope.spawn(move || {
+            prctl::set_name("controller").unwrap();
+            controller.run()
+        });
+
+        scope.spawn(move || {
+            prctl::set_name("reader").unwrap();
+            radio.run(reader);
+        });
+
+        scope.spawn(move || {
+            prctl::set_name("demod").unwrap();
+            demod.run();
+        });
+
+        scope.spawn(move || {
+            prctl::set_name("receiver").unwrap();
+
+            if let Some(mut f) = samples_file {
+                receiver.run(|samples| {
+                    f.write_all(unsafe {
+                        std::slice::from_raw_parts(
+                            samples.as_ptr() as *const u8,
+                            samples.len() * std::mem::size_of::<f32>()
+                        )
+                    }).expect("unable to write baseband");
+                })
+            } else {
+                receiver.run(|_| {})
+            }
+        });
+
+        scope.spawn(move || {
+            prctl::set_name("audio").unwrap();
+            audio.run();
+        });
+
+        scope.spawn(move || {
+            prctl::set_name("hub").unwrap();
+            app.run();
+        });
     });
-
-    thread::spawn(move || {
-        prctl::set_name("reader").unwrap();
-        radio.run(reader);
-    });
-
-    thread::spawn(move || {
-        prctl::set_name("demod").unwrap();
-        demod.run();
-    });
-
-    thread::spawn(move || {
-        prctl::set_name("receiver").unwrap();
-
-        if let Some(mut f) = samples_file {
-            receiver.run(|samples| {
-                f.write_all(unsafe {
-                    std::slice::from_raw_parts(
-                        samples.as_ptr() as *const u8,
-                        samples.len() * std::mem::size_of::<f32>()
-                    )
-                }).expect("unable to write baseband");
-            })
-        } else {
-            receiver.run(|_| {})
-        }
-    });
-
-    thread::spawn(move || {
-        prctl::set_name("audio").unwrap();
-        audio.run();
-    });
-
-    thread::spawn(move || {
-        prctl::set_name("hub").unwrap();
-        app.run();
-    }).join().unwrap();
 }

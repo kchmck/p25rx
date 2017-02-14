@@ -4,6 +4,7 @@ version = "1.0.0"
 dependencies = [
  "clap 2.20.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "collect_slice 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "crossbeam 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "demod_fm 0.1.0 (git+https://github.com/kchmck/demod_fm.rs)",
  "fnv 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "imbe 1.0.0 (git+https://github.com/kchmck/imbe.rs)",
