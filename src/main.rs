@@ -135,20 +135,20 @@ fn main() {
     let freq: u32 = args.value_of("freq").expect("-f option is required")
         .parse().expect("invalid frequency");
 
-    let (tx_ui_ev, rx_ui_ev) = channel();
-    let (tx_ctl_ev, rx_ctl_ev) = channel();
-    let (tx_recv_ev, rx_recv_ev) = channel();
-    let (tx_sdr_samp, rx_sdr_samp) = channel();
-    let (tx_aud_ev, rx_aud_ev) = channel();
+    let (tx_ui, rx_ui) = channel();
+    let (tx_ctl, rx_ctl) = channel();
+    let (tx_recv, rx_recv) = channel();
+    let (tx_read, rx_read) = channel();
+    let (tx_audio, rx_audio) = channel();
 
-    let mut app = MainApp::new(rx_ui_ev, tx_recv_ev.clone());
-    let mut audio = AudioTask::new(get_audio_out(), rx_aud_ev);
-    let mut receiver = RecvTask::new(freq, rx_recv_ev, tx_ui_ev.clone(),
-        tx_ctl_ev.clone(), tx_aud_ev.clone());
+    let mut app = MainApp::new(rx_ui, tx_recv.clone());
+    let mut audio = AudioTask::new(get_audio_out(), rx_audio);
+    let mut receiver = RecvTask::new(freq, rx_recv, tx_ui.clone(),
+        tx_ctl.clone(), tx_audio.clone());
 
-    let mut controller = ControlTask::new(control, rx_ctl_ev);
-    let mut radio = ReadTask::new(tx_sdr_samp);
-    let mut demod = DemodTask::new(rx_sdr_samp, tx_ui_ev.clone(), tx_recv_ev.clone());
+    let mut controller = ControlTask::new(control, rx_ctl);
+    let mut radio = ReadTask::new(tx_read);
+    let mut demod = DemodTask::new(rx_read, tx_ui.clone(), tx_recv.clone());
 
     crossbeam::scope(|scope| {
         scope.spawn(move || {
