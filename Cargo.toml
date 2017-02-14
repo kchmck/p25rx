@@ -2,6 +2,7 @@
 name = "p25rx"
 version = "1.0.0"
 authors = ["Mick Koch <mick@kochm.co>"]
+license = "GPLv2"
 
 [dependencies]
 
