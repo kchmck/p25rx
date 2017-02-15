@@ -15,7 +15,7 @@ imbe = {version = "^1.0.0", git = "https://github.com/kchmck/imbe.rs"}
 libc = "^0.2.8"
 map_in_place = {version = "^1.0.0", git = "https://github.com/kchmck/map_in_place.rs"}
 num = "^0.1.34"
-p25 = {version = "^1.0.0", git = "https://github.com/kchmck/p25.rs"}
+p25 = {version = "^1.0.0", git = "https://github.com/kchmck/p25.rs", features = ["ser"]}
 p25_filts = {version = "^1.0.0", git = "https://github.com/kchmck/p25_filts.rs"}
 pool = {version = "^0.1.3", git = "https://github.com/kchmck/pool"}
 prctl = "^1.0.0"
@@ -25,6 +25,20 @@ rtlsdr_iq = {version = "^1.0.0", git = "https://github.com/kchmck/rtlsdr_iq.rs"}
 static_decimate = {version = "^1.0.0", git = "https://github.com/kchmck/static_decimate.rs"}
 static_fir = {version = "^1.0.0", git = "https://github.com/kchmck/static_fir.rs"}
 throttle = {version = "^1.0.0", git = "https://github.com/kchmck/throttle.rs"}
+
+chan = "0.1.0"
+chrono = "0.2.25"
+serde = "0.9"
+serde_derive = "0.9"
+serde_json = "0.9"
+uhttp_chunked_write = "0.5.0"
+uhttp_json_api = "0.5.0"
+uhttp_method = "0.10.0"
+uhttp_response_header = "0.5.0"
+uhttp_sse = "0.5.0"
+uhttp_status = "0.10.0"
+uhttp_uri = "0.5.1"
+uhttp_version = "0.6.0"
 
 [profile.release]
 panic = "abort"

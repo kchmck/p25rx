@@ -14,7 +14,7 @@ use pool::Checkout;
 
 use audio::{AudioEvent, AudioOutput};
 use sdr::ControlTaskEvent;
-use hub::HubEvent;
+use hub::{HubEvent, StateEvent};
 
 pub enum ReceiverEvent {
     Baseband(Checkout<Vec<f32>>),
@@ -42,7 +42,7 @@ impl RecvTask {
         -> Self
     {
         RecvTask {
-            control_freq: freq,
+            control_freq: std::u32::MAX,
             msg: MessageReceiver::new(),
             channels: ChannelParamsMap::default(),
             cur_talkgroup: TalkGroup::Default,
@@ -51,12 +51,19 @@ impl RecvTask {
             hub: hub,
             sdr: sdr,
             audio: audio,
-        }.init()
+        }.init(freq)
     }
 
-    fn init(self) -> Self {
-        self.switch_control();
+    fn init(mut self, freq: u32) -> Self {
+        self.set_control_freq(freq);
         self
+    }
+
+    fn set_control_freq(&mut self, freq: u32) {
+        self.control_freq = freq;
+        self.hub.send(HubEvent::State(StateEvent::UpdateCtlFreq(freq)))
+            .expect("unable to send control frequency");
+        self.switch_control();
     }
 
     fn switch_control(&self) {
@@ -65,7 +72,7 @@ impl RecvTask {
 
     fn set_freq(&self, freq: u32) {
         self.hub.send(HubEvent::UpdateCurFreq(freq))
-            .expect("unable to update freq in UI");
+            .expect("unable to send current frequency");
         self.sdr.send(ControlTaskEvent::SetFreq(freq))
             .expect("unable to set freq in sdr");
     }
@@ -82,10 +89,7 @@ impl RecvTask {
 
                     cb(&samples[..]);
                 },
-                ReceiverEvent::SetControlFreq(freq) => {
-                    self.control_freq = freq;
-                    self.switch_control();
-                },
+                ReceiverEvent::SetControlFreq(freq) => self.set_control_freq(freq),
             }
         }
     }
@@ -185,7 +189,8 @@ impl RecvTask {
         self.cur_talkgroup = tg;
 
         self.set_freq(freq);
-        self.hub.send(HubEvent::UpdateTalkgroup(tg)).expect("unable to send talkgroup");
+        self.hub.send(HubEvent::UpdateTalkGroup(tg))
+            .expect("unable to send talkgroup");
 
         true
     }
