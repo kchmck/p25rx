@@ -47,10 +47,8 @@ impl ControlTask {
     pub fn run(&mut self) {
         loop {
             match self.events.recv().expect("unable to receive controller event") {
-                ControlTaskEvent::SetFreq(freq) => {
-                    println!("SetFreq({})", freq);
-                    self.sdr.set_center_freq(freq).expect("unable to set frequency");
-                },
+                ControlTaskEvent::SetFreq(freq) =>
+                    self.sdr.set_center_freq(freq).expect("unable to set frequency"),
             }
         }
     }
