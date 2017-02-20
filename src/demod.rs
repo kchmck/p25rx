@@ -18,7 +18,6 @@ use recv::ReceiverEvent;
 use consts::{BUF_SIZE_COMPLEX, BASEBAND_SAMPLE_RATE};
 
 const FM_DEV: u32 = 5000;
-const POWER_ADJUST: f32 = -106.0;
 const IMPEDANCE: f32 = 50.0;
 
 pub struct DemodTask {
@@ -80,7 +79,7 @@ impl DemodTask {
             samples.map_in_place(|&s| self.bandpass.feed(s));
 
             notifier.throttle(|| {
-                let power = power_dbm(&samples[..], IMPEDANCE) + POWER_ADJUST;
+                let power = power_dbm(&samples[..], IMPEDANCE);
 
                 self.hub.send(HubEvent::UpdateSignalPower(power))
                     .expect("unable to send signal power");
