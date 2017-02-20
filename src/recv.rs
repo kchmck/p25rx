@@ -8,7 +8,7 @@ use fnv::FnvHasher;
 use p25::message::nid::DataUnit;
 use p25::message::receiver::MessageReceiver;
 use p25::trunking::fields::{self, TalkGroup, ChannelParamsMap, Channel};
-use p25::trunking::tsbk::{TSBKOpcode};
+use p25::trunking::tsbk::{TsbkOpcode};
 use p25::voice::crypto::CryptoAlgorithm;
 use pool::Checkout;
 
@@ -135,7 +135,7 @@ impl RecvTask {
                 };
 
                 match opcode {
-                    TSBKOpcode::GroupVoiceUpdate => {
+                    TsbkOpcode::GroupVoiceUpdate => {
                         let updates = fields::GroupTrafficUpdate::new(tsbk.payload())
                                           .updates();
 
@@ -146,7 +146,7 @@ impl RecvTask {
                             }
                         }
                     },
-                    TSBKOpcode::ChannelParamsUpdate => {
+                    TsbkOpcode::ChannelParamsUpdate => {
                         let dec = fields::ChannelParamsUpdate::new(tsbk.payload());
                         self.channels[dec.id() as usize] = Some(dec.params());
                     },
