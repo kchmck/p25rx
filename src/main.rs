@@ -14,10 +14,8 @@ extern crate prctl;
 extern crate rtlsdr;
 extern crate rtlsdr_iq;
 extern crate static_decimate;
-extern crate throttle;
-
-#[macro_use]
 extern crate static_fir;
+extern crate throttle;
 
 use std::fs::{File, OpenOptions};
 use std::io::{BufWriter, Write};
