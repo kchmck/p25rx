@@ -148,7 +148,7 @@ impl RecvTask {
                     },
                     TsbkOpcode::ChannelParamsUpdate => {
                         let dec = fields::ChannelParamsUpdate::new(tsbk.payload());
-                        self.channels[dec.id() as usize] = Some(dec.params());
+                        self.channels.update(&dec);
                     },
                     _ => {},
                 }
@@ -177,7 +177,7 @@ impl RecvTask {
             }
         }
 
-        let freq = match self.channels[ch.id() as usize] {
+        let freq = match self.channels.lookup(ch.id()) {
             Some(p) => p.rx_freq(ch.number()),
             None => return false,
         };
