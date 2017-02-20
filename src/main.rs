@@ -70,7 +70,7 @@ fn main() {
              .value_name("INDEX"))
         .get_matches();
 
-    let get_audio_out = || {
+    let audio_out = || {
         AudioOutput::new(BufWriter::new(
             OpenOptions::new()
                 .write(true)
@@ -81,7 +81,7 @@ fn main() {
 
     if let Some(path) = args.value_of("replay") {
         let mut stream = File::open(path).expect("unable to open replay file");
-        let mut recv = ReplayReceiver::new(get_audio_out());
+        let mut recv = ReplayReceiver::new(audio_out());
 
         recv.replay(&mut stream);
 
@@ -140,7 +140,7 @@ fn main() {
     let (tx_audio, rx_audio) = channel();
 
     let mut app = MainApp::new(rx_ui, tx_recv.clone());
-    let mut audio = AudioTask::new(get_audio_out(), rx_audio);
+    let mut audio = AudioTask::new(audio_out(), rx_audio);
     let mut receiver = RecvTask::new(freq, rx_recv, tx_ui.clone(),
         tx_ctl.clone(), tx_audio.clone());
 
