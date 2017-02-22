@@ -14,7 +14,7 @@ use pool::Checkout;
 
 use audio::{AudioEvent, AudioOutput};
 use sdr::ControlTaskEvent;
-use hub::{HubEvent, StateEvent, SerdeRfssStatus};
+use hub::{HubEvent, StateEvent, SerdeRfssStatus, SerdeNetworkStatus};
 
 pub enum ReceiverEvent {
     Baseband(Checkout<Vec<f32>>),
@@ -159,6 +159,11 @@ impl RecvTask {
                         self.hub.send(HubEvent::RfssStatus(SerdeRfssStatus::new(
                             &fields::RfssStatusBroadcast::new(tsbk.payload())
                         ))).expect("unable to send rfss status"),
+
+                    TsbkOpcode::NetworkStatusBroadcast =>
+                        self.hub.send(HubEvent::NetworkStatus(SerdeNetworkStatus::new(
+                            &fields::NetworkStatusBroadcast::new(tsbk.payload())
+                        ))).expect("unable to send network status"),
 
                     _ => {},
                 }

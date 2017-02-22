@@ -7,7 +7,7 @@ use std::sync::mpsc::{channel, Sender, Receiver};
 use std;
 
 use chan;
-use p25::trunking::fields::{TalkGroup, RfssStatusBroadcast};
+use p25::trunking::fields::{TalkGroup, RfssStatusBroadcast, NetworkStatusBroadcast};
 use serde::Serialize;
 use serde_json;
 use uhttp_json_api::{HttpRequest, HttpResult};
@@ -45,6 +45,7 @@ pub enum HubEvent {
     UpdateTalkGroup(TalkGroup),
     UpdateSignalPower(f32),
     RfssStatus(SerdeRfssStatus),
+    NetworkStatus(SerdeNetworkStatus),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -259,6 +260,11 @@ impl StreamTask {
                 event: "rfssStatus",
                 payload: s,
             }),
+
+            NetworkStatus(s) => write_json(&mut msg.data()?, &SerdeEvent {
+                event: "networkStatus",
+                payload: s,
+            }),
         }
     }
 }
@@ -333,6 +339,23 @@ impl SerdeRfssStatus {
             system: s.system(),
             rfss: s.rfss(),
             site: s.site(),
+        }
+    }
+}
+
+#[derive(Serialize, Clone, Copy)]
+pub struct SerdeNetworkStatus {
+    area: u8,
+    wacn: u32,
+    system: u16,
+}
+
+impl SerdeNetworkStatus {
+    pub fn new(s: &NetworkStatusBroadcast) -> Self {
+        SerdeNetworkStatus {
+            area: s.area(),
+            wacn: s.wacn(),
+            system: s.system(),
         }
     }
 }
