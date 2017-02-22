@@ -7,7 +7,7 @@ use std::sync::mpsc::{channel, Sender, Receiver};
 use std;
 
 use chan;
-use p25::trunking::fields::{TalkGroup, RfssStatusBroadcast, NetworkStatusBroadcast};
+use p25::trunking::fields::{self, TalkGroup};
 use serde::Serialize;
 use serde_json;
 use uhttp_json_api::{HttpRequest, HttpResult};
@@ -333,7 +333,7 @@ pub struct SerdeRfssStatus {
 }
 
 impl SerdeRfssStatus {
-    pub fn new(s: &RfssStatusBroadcast) -> Self {
+    pub fn new(s: &fields::RfssStatusBroadcast) -> Self {
         SerdeRfssStatus {
             area: s.area(),
             system: s.system(),
@@ -351,7 +351,7 @@ pub struct SerdeNetworkStatus {
 }
 
 impl SerdeNetworkStatus {
-    pub fn new(s: &NetworkStatusBroadcast) -> Self {
+    pub fn new(s: &fields::NetworkStatusBroadcast) -> Self {
         SerdeNetworkStatus {
             area: s.area(),
             wacn: s.wacn(),
