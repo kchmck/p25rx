@@ -7,7 +7,7 @@ use std::sync::mpsc::{channel, Sender, Receiver};
 use std;
 
 use chan;
-use p25::trunking::fields::{TalkGroup};
+use p25::trunking::fields::{TalkGroup, RfssStatusBroadcast};
 use serde::Serialize;
 use serde_json;
 use uhttp_json_api::{HttpRequest, HttpResult};
@@ -254,6 +254,11 @@ impl StreamTask {
                 event: "sigPower",
                 payload: p,
             }),
+
+            RfssStatus(s) => write_json(&mut msg.data()?, &SerdeEvent {
+                event: "rfssStatus",
+                payload: s,
+            }),
         }
     }
 }
@@ -311,4 +316,23 @@ struct SerdeCtlFreq {
 struct SerdeEvent<T: Serialize> {
     event: &'static str,
     payload: T,
+}
+
+#[derive(Serialize, Clone, Copy)]
+pub struct SerdeRfssStatus {
+    area: u8,
+    system: u16,
+    rfss: u8,
+    site: u8,
+}
+
+impl SerdeRfssStatus {
+    pub fn new(s: &RfssStatusBroadcast) -> Self {
+        SerdeRfssStatus {
+            area: s.area(),
+            system: s.system(),
+            rfss: s.rfss(),
+            site: s.site(),
+        }
+    }
 }
