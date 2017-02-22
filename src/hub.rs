@@ -46,6 +46,7 @@ pub enum HubEvent {
     UpdateSignalPower(f32),
     RfssStatus(SerdeRfssStatus),
     NetworkStatus(SerdeNetworkStatus),
+    AltControl(SerdeAltControl),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -265,6 +266,11 @@ impl StreamTask {
                 event: "networkStatus",
                 payload: s,
             }),
+
+            AltControl(a) => write_json(&mut msg.data()?, &SerdeEvent {
+                event: "altControl",
+                payload: a,
+            }),
         }
     }
 }
@@ -356,6 +362,23 @@ impl SerdeNetworkStatus {
             area: s.area(),
             wacn: s.wacn(),
             system: s.system(),
+        }
+    }
+}
+
+#[derive(Serialize, Clone, Copy)]
+pub struct SerdeAltControl {
+    rfss: u8,
+    site: u8,
+    freq: u32,
+}
+
+impl SerdeAltControl {
+    pub fn new(s: &fields::AltControlChannel, freq: u32) -> Self {
+        SerdeAltControl {
+            rfss: s.rfss(),
+            site: s.site(),
+            freq: freq,
         }
     }
 }

@@ -165,6 +165,21 @@ impl RecvTask {
                             &fields::NetworkStatusBroadcast::new(tsbk.payload())
                         ))).expect("unable to send network status"),
 
+                    TsbkOpcode::AltControlChannel => {
+                        let dec = fields::AltControlChannel::new(tsbk.payload());
+
+                        for &(ch, _) in dec.alts().iter() {
+                            let freq = match self.channels.lookup(ch.id()) {
+                                Some(p) => p.rx_freq(ch.number()),
+                                None => continue,
+                            };
+
+                            self.hub.send(HubEvent::AltControl(hub::SerdeAltControl::new(
+                                &dec, freq
+                            ))).expect("unable to send alt control");
+                        }
+                    },
+
                     _ => {},
                 }
             }
