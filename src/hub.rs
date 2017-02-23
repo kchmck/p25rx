@@ -309,6 +309,26 @@ impl StreamTask {
                     Ok(())
                 },
 
+                TsbkOpcode::AdjacentSite => {
+                    let dec = fields::AdjacentSite::new(tsbk.payload());
+                    let ch = dec.channel();
+
+                    let freq = {
+                        let channels = self.state.channels.read()
+                            .expect("unable to read channels");
+
+                        match channels.lookup(ch.id()) {
+                            Some(p) => p.rx_freq(ch.number()),
+                            None => return Ok(()),
+                        }
+                    };
+
+                    write_json(&mut msg.data()?, &SerdeEvent {
+                        event: "adjacentSite",
+                        payload: SerdeAdjacentSite::new(&dec, freq),
+                    })
+                },
+
                 _ => Ok(()),
             },
         }
@@ -416,6 +436,27 @@ pub struct SerdeAltControl {
 impl SerdeAltControl {
     pub fn new(s: &fields::AltControlChannel, freq: u32) -> Self {
         SerdeAltControl {
+            rfss: s.rfss(),
+            site: s.site(),
+            freq: freq,
+        }
+    }
+}
+
+#[derive(Serialize, Clone, Copy)]
+pub struct SerdeAdjacentSite {
+    area: u8,
+    system: u16,
+    rfss: u8,
+    site: u8,
+    freq: u32,
+}
+
+impl SerdeAdjacentSite {
+    pub fn new(s: &fields::AdjacentSite, freq: u32) -> Self {
+        SerdeAdjacentSite {
+            area: s.area(),
+            system: s.system(),
             rfss: s.rfss(),
             site: s.site(),
             freq: freq,
