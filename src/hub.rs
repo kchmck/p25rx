@@ -223,8 +223,9 @@ impl StreamTask {
         loop {
             let e = self.events.recv().expect("unable to receive stream event");
 
-            try!(self.handle_event(e)
-                 .map_err(|_| std::io::Error::from(std::io::ErrorKind::Other)));
+            if let Err(_) = self.handle_event(e) {
+                 return Err(std::io::ErrorKind::Other.into());
+            }
         }
     }
 
