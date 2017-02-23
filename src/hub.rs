@@ -1,13 +1,14 @@
 use std::convert::TryFrom;
 use std::io::Write;
 use std::net::{TcpListener, TcpStream};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std;
 
 use chan;
-use p25::trunking::fields::{self, TalkGroup};
+use p25::trunking::fields::{self, TalkGroup, ChannelParamsMap};
+use p25::trunking::tsbk::{TsbkFields, TsbkOpcode};
 use serde::Serialize;
 use serde_json;
 use uhttp_json_api::{HttpRequest, HttpResult};
@@ -44,24 +45,25 @@ pub enum HubEvent {
     UpdateCurFreq(u32),
     UpdateTalkGroup(TalkGroup),
     UpdateSignalPower(f32),
-    RfssStatus(SerdeRfssStatus),
-    NetworkStatus(SerdeNetworkStatus),
-    AltControl(SerdeAltControl),
+    TrunkingControl(TsbkFields),
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub enum StateEvent {
     UpdateCtlFreq(u32),
+    UpdateChannelParams(TsbkFields),
 }
 
 pub struct State {
     ctlfreq: AtomicU32,
+    channels: RwLock<ChannelParamsMap>,
 }
 
 impl Default for State {
     fn default() -> Self {
         State {
             ctlfreq: AtomicU32::new(std::u32::MAX),
+            channels: RwLock::new(ChannelParamsMap::default()),
         }
     }
 }
@@ -72,6 +74,9 @@ impl State {
 
         match e {
             UpdateCtlFreq(f) => self.ctlfreq.store(f, Ordering::Relaxed),
+            UpdateChannelParams(tsbk) =>
+                self.channels.write().expect("unable to write channels")
+                    .update(&fields::ChannelParamsUpdate::new(tsbk.payload())),
         }
     }
 }
@@ -170,7 +175,8 @@ impl HttpTask {
         match (method, route) {
             (Method::Get, Route::Subscribe) => {
                 if let Ok(s) = req.into_stream().try_clone() {
-                    StreamTask::new(self.stream.connect(), s).run().is_ok();
+                    StreamTask::new(self.stream.connect(), s, self.state.clone())
+                        .run().is_ok();
                     Ok(())
                 } else {
                     Err(StatusCode::InternalServerError)
@@ -203,13 +209,15 @@ impl HttpTask {
 pub struct StreamTask {
     events: Receiver<HubEvent>,
     stream: TcpStream,
+    state: Arc<State>,
 }
 
 impl StreamTask {
-    pub fn new(events: Receiver<HubEvent>, stream: TcpStream) -> Self {
+    pub fn new(events: Receiver<HubEvent>, stream: TcpStream, state: Arc<State>) -> Self {
         StreamTask {
             events: events,
             stream: stream,
+            state: state,
         }
     }
 
@@ -243,6 +251,8 @@ impl StreamTask {
                 payload: f
             }),
 
+            State(UpdateChannelParams(_)) => Ok(()),
+
             UpdateCurFreq(f) => write_json(&mut msg.data()?, &SerdeEvent {
                 event: "curFreq",
                 payload: f,
@@ -258,20 +268,49 @@ impl StreamTask {
                 payload: p,
             }),
 
-            RfssStatus(s) => write_json(&mut msg.data()?, &SerdeEvent {
-                event: "rfssStatus",
-                payload: s,
-            }),
+            // If this event has been received, the TSBK is valid with a known opcode.
+            TrunkingControl(tsbk) => match tsbk.opcode().unwrap() {
+                TsbkOpcode::RfssStatusBroadcast =>
+                    write_json(&mut msg.data()?, &SerdeEvent {
+                        event: "rfssStatus",
+                        payload: SerdeRfssStatus::new(
+                            &fields::RfssStatusBroadcast::new(tsbk.payload())),
+                    }),
 
-            NetworkStatus(s) => write_json(&mut msg.data()?, &SerdeEvent {
-                event: "networkStatus",
-                payload: s,
-            }),
+                TsbkOpcode::NetworkStatusBroadcast =>
+                    write_json(&mut msg.data()?, &SerdeEvent {
+                        event: "networkStatus",
+                        payload: SerdeNetworkStatus::new(
+                            &fields::NetworkStatusBroadcast::new(tsbk.payload())),
+                    }),
 
-            AltControl(a) => write_json(&mut msg.data()?, &SerdeEvent {
-                event: "altControl",
-                payload: a,
-            }),
+                TsbkOpcode::AltControlChannel => {
+                    let dec = fields::AltControlChannel::new(tsbk.payload());
+
+                    for &(ch, _) in dec.alts().iter() {
+                        let freq = {
+                            let channels = self.state.channels.read()
+                                .expect("unable to read channels");
+
+                            match channels.lookup(ch.id()) {
+                                Some(p) => p.rx_freq(ch.number()),
+                                None => continue,
+                            }
+                        };
+
+                        try!(write_json(&mut msg.data()?, &SerdeEvent {
+                            event: "altControl",
+                            payload: SerdeAltControl::new(&dec, freq),
+                        }));
+
+                        msg.finish().is_ok();
+                    }
+
+                    Ok(())
+                },
+
+                _ => Ok(()),
+            },
         }
     }
 }

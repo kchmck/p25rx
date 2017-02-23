@@ -14,7 +14,7 @@ use pool::Checkout;
 
 use audio::{AudioEvent, AudioOutput};
 use sdr::ControlTaskEvent;
-use hub::{self, HubEvent, StateEvent};
+use hub::{HubEvent, StateEvent};
 
 pub enum ReceiverEvent {
     Baseband(Checkout<Vec<f32>>),
@@ -138,6 +138,9 @@ impl RecvTask {
                     None => return,
                 };
 
+                self.hub.send(HubEvent::TrunkingControl(tsbk))
+                    .expect("unable to send trunking control");
+
                 match opcode {
                     TsbkOpcode::GroupVoiceUpdate => {
                         let updates = fields::GroupTrafficUpdate::new(tsbk.payload())
@@ -153,33 +156,10 @@ impl RecvTask {
                     TsbkOpcode::ChannelParamsUpdate => {
                         let dec = fields::ChannelParamsUpdate::new(tsbk.payload());
                         self.channels.update(&dec);
+                        self.hub.send(HubEvent::State(
+                            StateEvent::UpdateChannelParams(tsbk)
+                        )).expect("unable to send channel update");
                     },
-
-                    TsbkOpcode::RfssStatusBroadcast =>
-                        self.hub.send(HubEvent::RfssStatus(hub::SerdeRfssStatus::new(
-                            &fields::RfssStatusBroadcast::new(tsbk.payload())
-                        ))).expect("unable to send rfss status"),
-
-                    TsbkOpcode::NetworkStatusBroadcast =>
-                        self.hub.send(HubEvent::NetworkStatus(hub::SerdeNetworkStatus::new(
-                            &fields::NetworkStatusBroadcast::new(tsbk.payload())
-                        ))).expect("unable to send network status"),
-
-                    TsbkOpcode::AltControlChannel => {
-                        let dec = fields::AltControlChannel::new(tsbk.payload());
-
-                        for &(ch, _) in dec.alts().iter() {
-                            let freq = match self.channels.lookup(ch.id()) {
-                                Some(p) => p.rx_freq(ch.number()),
-                                None => continue,
-                            };
-
-                            self.hub.send(HubEvent::AltControl(hub::SerdeAltControl::new(
-                                &dec, freq
-                            ))).expect("unable to send alt control");
-                        }
-                    },
-
                     _ => {},
                 }
             }
