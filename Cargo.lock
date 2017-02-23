@@ -30,7 +30,7 @@ dependencies = [
  "uhttp_json_api 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "uhttp_method 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "uhttp_response_header 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "uhttp_sse 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uhttp_sse 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "uhttp_status 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "uhttp_uri 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "uhttp_version 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -610,7 +610,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "uhttp_sse"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -756,7 +756,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum uhttp_request 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "fae19366cc9626c7d4c27173b7073cc943f3dcfbb5bd8beae3c442a25eab1283"
 "checksum uhttp_request_target 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "664fd273b20342acf93fe79c9c61f9397f6a6d8b3f436c0d8713390c7a35b243"
 "checksum uhttp_response_header 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fd5c1811e28071437cdf57b1157ca56c9d7e97a8199c243640b60ccbbce59d4b"
-"checksum uhttp_sse 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fb99804f0e3acc75e181df5824800aaa615e6f3b41727ab3cf614e85728b70ce"
+"checksum uhttp_sse 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "c6ff93345ba2206230b1bb1aa3ece1a63dd9443b7531024575d16a0680a59444"
 "checksum uhttp_status 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "cb502d735c8f75539b218e85c425f0d474a2247020984b1154db531811b68057"
 "checksum uhttp_transfer_encoding 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "86f268b2fafe041461e9a6169f228c0f97d30d111eb6131591fadabc46f4dc7f"
 "checksum uhttp_uri 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b9b600e6da808f63a440874d633b22fa04abc9c3b08212ee7292512aec62805b"
