@@ -1,5 +1,4 @@
 use std::io::{Write, BufWriter};
-use std::net::TcpStream;
 use std;
 
 use chrono::UTC;
@@ -10,7 +9,7 @@ use uhttp_response_header::HeaderLines;
 use uhttp_status::StatusCode;
 use uhttp_version::HttpVersion;
 
-pub fn send_status(s: &mut TcpStream, st: StatusCode) -> std::io::Result<()> {
+pub fn send_status<W: Write>(s: W, st: StatusCode) -> std::io::Result<()> {
     send_head(&mut HeaderLines::new(s), st)
 }
 
@@ -22,7 +21,7 @@ pub fn send_head<W: Write>(h: &mut HeaderLines<W>, st: StatusCode) -> std::io::R
     Ok(())
 }
 
-pub fn send_json<S: Serialize>(mut s: &mut TcpStream, msg: S) -> std::io::Result<()> {
+pub fn send_json<W: Write, S: Serialize>(mut s: W, msg: S) -> std::io::Result<()> {
     {
         let mut h = HeaderLines::new(&mut s);
         try!(send_head(&mut h, StatusCode::Ok));

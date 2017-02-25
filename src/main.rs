@@ -1,9 +1,9 @@
-#![feature(integer_atomics)]
 #![feature(try_from)]
 
 #[macro_use]
 extern crate serde_derive;
 
+extern crate arrayvec;
 extern crate chan;
 extern crate chrono;
 extern crate clap;
@@ -14,6 +14,7 @@ extern crate fnv;
 extern crate imbe;
 extern crate libc;
 extern crate map_in_place;
+extern crate mio;
 extern crate num;
 extern crate p25;
 extern crate p25_filts;
@@ -37,8 +38,6 @@ extern crate uhttp_version;
 
 use std::fs::{File, OpenOptions};
 use std::io::{BufWriter, Write};
-use std::net::TcpListener;
-use std::sync::Arc;
 use std::sync::mpsc::channel;
 
 use clap::{Arg, App};
@@ -55,11 +54,9 @@ mod sdr;
 use audio::{AudioOutput, AudioTask};
 use consts::SDR_SAMPLE_RATE;
 use demod::DemodTask;
-use hub::{Broadcast, StateTask, SocketTask, HttpTask};
+use hub::HubTask;
 use recv::{RecvTask, ReplayReceiver};
 use sdr::{ReadTask, ControlTask};
-
-const NUM_HTTP_WORKERS: usize = 4;
 
 fn main() {
     let args = App::new("p25rx")
@@ -160,51 +157,28 @@ fn main() {
     let freq: u32 = args.value_of("freq").expect("-f option is required")
         .parse().expect("invalid frequency");
 
-    let tcp = TcpListener::bind(args.value_of("bind").unwrap_or("0.0.0.0:8025"))
+    let addr = args.value_of("bind").unwrap_or("0.0.0.0:8025").parse()
         .expect("unable to bind tcp socket");
 
     let (tx_ctl, rx_ctl) = channel();
     let (tx_recv, rx_recv) = channel();
     let (tx_read, rx_read) = channel();
     let (tx_audio, rx_audio) = channel();
-    let (tx_conn, rx_conn) = chan::sync(16);
+    let (tx_hub, rx_hub) = mio::channel::channel();
 
-    let (tx_stream, rx_stream) = channel();
-    let broadcast = Arc::new(Broadcast::new(rx_stream));
-
-    let mut socket = SocketTask::new(tcp, tx_conn);
-    let mut state = StateTask::new(broadcast.connect());
+    let mut hub = HubTask::new(rx_hub, tx_recv.clone(), &addr)
+        .expect("unable to start hub");
     let mut control = ControlTask::new(control, rx_ctl);
     let mut read = ReadTask::new(tx_read);
-    let mut demod = DemodTask::new(rx_read, tx_stream.clone(), tx_recv.clone());
-    let mut receiver = RecvTask::new(freq, rx_recv, tx_stream.clone(),
+    let mut demod = DemodTask::new(rx_read, tx_hub.clone(), tx_recv.clone());
+    let mut receiver = RecvTask::new(freq, rx_recv, tx_hub.clone(),
         tx_ctl.clone(), tx_audio.clone());
     let mut audio = AudioTask::new(audio_out(), rx_audio);
 
     crossbeam::scope(|scope| {
-        for _ in 0..NUM_HTTP_WORKERS {
-            let mut worker = HttpTask::new(tx_recv.clone(), state.get_ref(),
-                rx_conn.clone(), broadcast.clone());
-
-            scope.spawn(move || {
-                prctl::set_name("http").unwrap();
-                worker.run();
-            });
-        }
-
         scope.spawn(move || {
-            prctl::set_name("broadcast").unwrap();
-            broadcast.run().unwrap();
-        });
-
-        scope.spawn(move || {
-            prctl::set_name("socket").unwrap();
-            socket.run();
-        });
-
-        scope.spawn(move || {
-            prctl::set_name("state").unwrap();
-            state.run();
+            prctl::set_name("hub").unwrap();
+            hub.run();
         });
 
         scope.spawn(move || {

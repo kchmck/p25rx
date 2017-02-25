@@ -1,12 +1,13 @@
 use std::convert::TryFrom;
-use std::io::Write;
-use std::net::{TcpListener, TcpStream};
-use std::sync::{Arc, Mutex, RwLock};
-use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::mpsc::{channel, Sender, Receiver};
+use std::io::{Write, ErrorKind};
+use std::net::SocketAddr;
+use std::sync::mpsc::{Sender, TryRecvError};
 use std;
 
-use chan;
+use arrayvec::ArrayVec;
+use mio::channel::{Receiver};
+use mio::tcp::{TcpListener, TcpStream};
+use mio::{Poll, PollOpt, Token, Event, Events, Ready};
 use p25::trunking::fields::{self, TalkGroup, ChannelParamsMap};
 use p25::trunking::tsbk::{TsbkFields, TsbkOpcode};
 use serde::Serialize;
@@ -39,130 +40,137 @@ impl<'a> TryFrom<HttpResource<'a>> for Route {
     }
 }
 
-#[derive(Clone)]
-pub enum HubEvent {
-    State(StateEvent),
-    UpdateCurFreq(u32),
-    UpdateTalkGroup(TalkGroup),
-    UpdateSignalPower(f32),
-    TrunkingControl(TsbkFields),
+const CONNS: Token = Token(1000);
+const EVENTS: Token = Token(2000);
+
+pub struct HubTask {
+    state: State,
+    socket: TcpListener,
+    events: Poll,
+    streamers: ArrayVec<[TcpStream; 4]>,
+    requests: ArrayVec<[TcpStream; 32]>,
+    map: [usize; 32],
+    chan: Receiver<HubEvent>,
+    recv: Sender<ReceiverEvent>,
 }
 
-#[derive(Copy, Clone)]
-pub enum StateEvent {
-    UpdateCtlFreq(u32),
-    UpdateChannelParams(TsbkFields),
-}
+impl HubTask {
+    pub fn new(chan: Receiver<HubEvent>, recv: Sender<ReceiverEvent>, addr: &SocketAddr)
+        -> std::io::Result<Self>
+    {
+        let socket = TcpListener::bind(addr)?;
+        let events = Poll::new()?;
 
-pub struct State {
-    ctlfreq: AtomicU32,
-    channels: RwLock<ChannelParamsMap>,
-}
+        try!(events.register(&socket, CONNS, Ready::readable(), PollOpt::edge()));
+        try!(events.register(&chan, EVENTS, Ready::readable(), PollOpt::edge()));
 
-impl Default for State {
-    fn default() -> Self {
-        State {
-            ctlfreq: AtomicU32::new(std::u32::MAX),
-            channels: RwLock::new(ChannelParamsMap::default()),
-        }
-    }
-}
-
-impl State {
-    fn update(&self, e: StateEvent) {
-        use self::StateEvent::*;
-
-        match e {
-            UpdateCtlFreq(f) => self.ctlfreq.store(f, Ordering::Relaxed),
-            UpdateChannelParams(tsbk) =>
-                self.channels.write().expect("unable to write channels")
-                    .update(&fields::ChannelParamsUpdate::new(tsbk.payload())),
-        }
-    }
-}
-
-pub struct StateTask {
-    events: Receiver<HubEvent>,
-    state: Arc<State>,
-}
-
-impl StateTask {
-    pub fn new(events: Receiver<HubEvent>) -> Self {
-        StateTask {
+        Ok(HubTask {
+            state: State::default(),
+            socket: socket,
             events: events,
-            state: Arc::new(State::default()),
-        }
+            streamers: ArrayVec::new(),
+            requests: ArrayVec::new(),
+            map: [std::usize::MAX; 32],
+            chan: chan,
+            recv: recv,
+        })
     }
-
-    pub fn get_ref(&self) -> Arc<State> { self.state.clone() }
 
     pub fn run(&mut self) {
-        loop {
-            let e = self.events.recv().expect("unable to receive event");
+        let mut events = Events::with_capacity(32);
 
-            if let HubEvent::State(sm) = e {
-                self.state.update(sm);
+        loop {
+            self.events.poll(&mut events, None)
+                .expect("unable to poll events");
+
+            for event in events.iter() {
+                self.handle_event(event);
             }
         }
     }
-}
 
-pub struct SocketTask {
-    tcp: TcpListener,
-    conns: chan::Sender<TcpStream>,
-}
+    fn handle_event(&mut self, e: Event) {
+        match e.token() {
+            CONNS => self.handle_conns().expect("unable to handle connection"),
+            EVENTS => self.handle_chan().expect("unable to handle channel event"),
+            Token(idx) => {
+                let idx = self.map[idx];
+                self.map[idx] = std::usize::MAX;
 
-impl SocketTask {
-    pub fn new(tcp: TcpListener, conns: chan::Sender<TcpStream>) -> Self {
-        SocketTask {
-            tcp: tcp,
-            conns: conns,
+                let stream = self.requests.swap_remove(idx).unwrap();
+                self.events.deregister(&stream)
+                    .expect("unable to deregister stream");
+
+                let swapped = self.requests.len();
+                self.map[swapped] = idx;
+
+                self.handle_stream(stream);
+            },
         }
     }
 
-    pub fn run(&mut self) {
+    fn handle_conns(&mut self) -> Result<(), ()> {
         loop {
-            let (stream, _) = self.tcp.accept().expect("unable to accept");
-            self.conns.send(stream);
-        }
-    }
-}
+            let (stream, _) = match self.socket.accept() {
+                Ok(x) => x,
+                Err(ref e) if e.kind() == ErrorKind::WouldBlock => return Ok(()),
+                Err(_) => return Err(()),
+            };
 
-pub struct HttpTask {
-    recv: Sender<ReceiverEvent>,
-    state: Arc<State>,
-    events: chan::Receiver<TcpStream>,
-    stream: Arc<Broadcast<HubEvent>>,
-}
+            if self.requests.is_full() {
+                http::send_status(&stream, StatusCode::TooManyRequests).is_ok();
+                continue;
+            }
 
-impl HttpTask {
-    pub fn new(recv: Sender<ReceiverEvent>, state: Arc<State>,
-               events: chan::Receiver<TcpStream>, stream: Arc<Broadcast<HubEvent>>)
-        -> Self
-    {
-        HttpTask {
-            recv: recv,
-            state: state,
-            events: events,
-            stream: stream,
+            let idx = self.requests.len();
+
+            self.events.register(&stream, Token(idx), Ready::readable(), PollOpt::edge())
+                .expect("unable to register stream");
+
+            self.requests.push(stream);
+            self.map[idx] = idx;
         }
     }
 
-    pub fn run(&mut self) {
+    fn handle_chan(&mut self) -> Result<(), ()> {
         loop {
-            let stream = self.events.recv().expect("unable to receive http stream");
-            self.wrap_err(stream);
+            match self.chan.try_recv() {
+                Ok(msg) => self.handle_message(msg),
+                Err(TryRecvError::Disconnected) => return Err(()),
+                Err(TryRecvError::Empty) => return Ok(()),
+            }
         }
     }
 
-    fn wrap_err(&mut self, mut s: TcpStream) {
-        match self.handle(&mut s) {
+    fn handle_message(&mut self, msg: HubEvent) {
+        if let HubEvent::State(sm) = msg {
+            self.state.update(sm);
+        }
+
+        let mut keep = ArrayVec::<[TcpStream; 4]>::new();
+
+        loop {
+            let mut s = match self.streamers.pop() {
+                Some(s) => s,
+                None => break,
+            };
+
+            if let Ok(()) = self.stream_event(&mut s, &msg) {
+                keep.push(s);
+            }
+        }
+
+        self.streamers = keep;
+    }
+
+    fn handle_stream(&mut self, mut s: TcpStream) {
+        match self.handle_request(&mut s) {
             Ok(()) => {},
             Err(e) => { http::send_status(&mut s, e).is_ok(); }
         }
     }
 
-    fn handle(&mut self, s: &mut TcpStream) -> HttpResult<()> {
+    fn handle_request(&mut self, s: &mut TcpStream) -> HttpResult<()> {
         let mut buf = [0; 8192];
 
         let mut req = HttpRequest::new(s, &mut buf[..])?;
@@ -174,9 +182,16 @@ impl HttpTask {
 
         match (method, route) {
             (Method::Get, Route::Subscribe) => {
-                if let Ok(s) = req.into_stream().try_clone() {
-                    StreamTask::new(self.stream.connect(), s, self.state.clone())
-                        .run().is_ok();
+                if let Ok(mut s) = req.into_stream().try_clone() {
+                    if self.streamers.is_full() {
+                        return Err(StatusCode::TooManyRequests);
+                    }
+
+                    if self.start_stream(&mut s).is_ok() {
+                        // This is guaranteed to succeed due to the above check.
+                        self.streamers.push(s);
+                    }
+
                     Ok(())
                 } else {
                     Err(StatusCode::InternalServerError)
@@ -184,7 +199,7 @@ impl HttpTask {
             },
             (Method::Get, Route::CtlFreq) => {
                 http::send_json(req.into_stream(), SerdeCtlFreq {
-                    ctlfreq: self.state.ctlfreq.load(Ordering::Relaxed),
+                    ctlfreq: self.state.ctlfreq,
                 }).is_ok();
 
                 Ok(())
@@ -204,48 +219,25 @@ impl HttpTask {
             _ => Err(StatusCode::MethodNotAllowed),
         }
     }
-}
 
-pub struct StreamTask {
-    events: Receiver<HubEvent>,
-    stream: TcpStream,
-    state: Arc<State>,
-}
+    fn start_stream(&self, s: &mut TcpStream) -> std::io::Result<()> {
+        let mut h = HeaderLines::new(s);
 
-impl StreamTask {
-    pub fn new(events: Receiver<HubEvent>, stream: TcpStream, state: Arc<State>) -> Self {
-        StreamTask {
-            events: events,
-            stream: stream,
-            state: state,
-        }
+        try!(http::send_head(&mut h, StatusCode::Ok));
+        try!(write!(h.line(), "Content-Type: text/event-stream"));
+
+        Ok(())
     }
 
-    pub fn run(&mut self) -> std::io::Result<()> {
-        {
-            let mut h = HeaderLines::new(&mut self.stream);
-            try!(http::send_head(&mut h, StatusCode::Ok));
-            try!(write!(h.line(), "Content-Type: text/event-stream"));
-        }
-
-        loop {
-            let e = self.events.recv().expect("unable to receive stream event");
-
-            if let Err(_) = self.handle_event(e) {
-                 return Err(std::io::ErrorKind::Other.into());
-            }
-        }
-    }
-
-    fn handle_event(&mut self, e: HubEvent) -> serde_json::Result<()> {
+    fn stream_event(&mut self, s: &mut TcpStream, e: &HubEvent) -> serde_json::Result<()> {
         use serde_json::to_writer as write_json;
 
         use self::HubEvent::*;
         use self::StateEvent::*;
 
-        let mut msg = SseMessage::new(&mut self.stream);
+        let mut msg = SseMessage::new(s);
 
-        match e {
+        match *e {
             State(UpdateCtlFreq(f)) => write_json(&mut msg.data()?, &SerdeEvent {
                 event: "ctlFreq",
                 payload: f
@@ -288,14 +280,9 @@ impl StreamTask {
                     let dec = fields::AltControlChannel::new(tsbk.payload());
 
                     for &(ch, _) in dec.alts().iter() {
-                        let freq = {
-                            let channels = self.state.channels.read()
-                                .expect("unable to read channels");
-
-                            match channels.lookup(ch.id()) {
-                                Some(p) => p.rx_freq(ch.number()),
-                                None => continue,
-                            }
+                        let freq = match self.state.channels.lookup(ch.id()) {
+                            Some(p) => p.rx_freq(ch.number()),
+                            None => continue,
                         };
 
                         try!(write_json(&mut msg.data()?, &SerdeEvent {
@@ -313,14 +300,9 @@ impl StreamTask {
                     let dec = fields::AdjacentSite::new(tsbk.payload());
                     let ch = dec.channel();
 
-                    let freq = {
-                        let channels = self.state.channels.read()
-                            .expect("unable to read channels");
-
-                        match channels.lookup(ch.id()) {
-                            Some(p) => p.rx_freq(ch.number()),
-                            None => return Ok(()),
-                        }
+                    let freq = match self.state.channels.lookup(ch.id()) {
+                        Some(p) => p.rx_freq(ch.number()),
+                        None => return Ok(()),
                     };
 
                     write_json(&mut msg.data()?, &SerdeEvent {
@@ -335,49 +317,46 @@ impl StreamTask {
     }
 }
 
-pub struct Broadcast<T: Clone> {
-    input: Receiver<T>,
-    outputs: Mutex<Vec<Sender<T>>>,
+#[derive(Clone)]
+pub enum HubEvent {
+    State(StateEvent),
+    UpdateCurFreq(u32),
+    UpdateTalkGroup(TalkGroup),
+    UpdateSignalPower(f32),
+    TrunkingControl(TsbkFields),
 }
 
-impl<T: Clone> Broadcast<T> {
-    pub fn new(recv: Receiver<T>) -> Self {
-        Broadcast {
-            input: recv,
-            outputs: Mutex::new(vec![]),
+#[derive(Copy, Clone)]
+pub enum StateEvent {
+    UpdateCtlFreq(u32),
+    UpdateChannelParams(TsbkFields),
+}
+
+pub struct State {
+    ctlfreq: u32,
+    channels: ChannelParamsMap,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        State {
+            ctlfreq: std::u32::MAX,
+            channels: ChannelParamsMap::default(),
         }
-    }
-
-    pub fn run(&self) -> Result<(), ()> {
-        loop {
-            let event = self.input.recv().map_err(|_| ())?;
-
-            let mut outputs = self.outputs.lock().expect("unable to lock outputs");
-
-            let remove = outputs.iter().enumerate().fold(None, |r, (i, o)| {
-                match o.send(event.clone()) {
-                    Ok(()) => r.or(None),
-                    Err(_) => r.or(Some(i)),
-                }
-            });
-
-            if let Some(idx) = remove {
-                outputs.swap_remove(idx);
-            }
-        }
-    }
-
-    pub fn connect(&self) -> Receiver<T> {
-        let (tx, rx) = channel();
-
-        let mut outputs = self.outputs.lock().expect("unable to lock outputs");
-        outputs.push(tx);
-
-        rx
     }
 }
 
-unsafe impl<T: Clone> Sync for Broadcast<T> {}
+impl State {
+    fn update(&mut self, e: StateEvent) {
+        use self::StateEvent::*;
+
+        match e {
+            UpdateCtlFreq(f) => self.ctlfreq = f,
+            UpdateChannelParams(tsbk) =>
+                self.channels.update(&fields::ChannelParamsUpdate::new(tsbk.payload())),
+        }
+    }
+}
 
 #[derive(Deserialize, Serialize)]
 struct SerdeCtlFreq {

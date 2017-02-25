@@ -4,6 +4,7 @@ use std;
 use collect_slice::CollectSlice;
 use demod_fm::FMDemod;
 use map_in_place::MapInPlace;
+use mio;
 use num::complex::Complex32;
 use num::traits::Zero;
 use p25_filts::{DecimFIR, BandpassFIR, DeemphFIR};
@@ -26,13 +27,13 @@ pub struct DemodTask {
     deemph: FIRFilter<DeemphFIR>,
     demod: FMDemod,
     reader: Receiver<Checkout<Vec<u8>>>,
-    hub: Sender<HubEvent>,
+    hub: mio::channel::Sender<HubEvent>,
     chan: Sender<ReceiverEvent>,
 }
 
 impl DemodTask {
     pub fn new(reader: Receiver<Checkout<Vec<u8>>>,
-               hub: Sender<HubEvent>,
+               hub: mio::channel::Sender<HubEvent>,
                chan: Sender<ReceiverEvent>)
         -> Self
     {
