@@ -205,7 +205,7 @@ impl HubTask {
 
                 Ok(())
             },
-            (Method::Post, Route::CtlFreq) => {
+            (Method::Put, Route::CtlFreq) => {
                 let msg: SerdeCtlFreq = req.read_json()?;
 
                 // TODO: verify frequency range.
