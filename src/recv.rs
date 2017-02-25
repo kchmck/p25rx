@@ -118,7 +118,15 @@ impl RecvTask {
                 }
             },
             VoiceHeader(head) => self.handle_crypto(head.crypto_alg()),
-            LinkControl(_) => {},
+            LinkControl(lc) => {
+                let _ = match lc.opcode() {
+                    Some(o) => o,
+                    None => return,
+                };
+
+                self.hub.send(HubEvent::LinkControl(lc))
+                    .expect("unable to send link control");
+            },
             CryptoControl(cc) => self.handle_crypto(cc.alg()),
             LowSpeedDataFragment(_) => {},
             VoiceFrame(vf) => {

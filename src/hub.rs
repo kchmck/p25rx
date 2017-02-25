@@ -10,6 +10,7 @@ use mio::tcp::{TcpListener, TcpStream};
 use mio::{Poll, PollOpt, Token, Event, Events, Ready};
 use p25::trunking::fields::{self, TalkGroup, ChannelParamsMap};
 use p25::trunking::tsbk::{TsbkFields, TsbkOpcode};
+use p25::voice::control::{self, LinkControlFields, LinkControlOpcode};
 use serde::Serialize;
 use serde_json;
 use uhttp_json_api::{HttpRequest, HttpResult};
@@ -313,6 +314,17 @@ impl HubTask {
 
                 _ => Ok(()),
             },
+
+            // If this event has been received, the LC has a known opcode.
+            LinkControl(lc) => match lc.opcode().unwrap() {
+                LinkControlOpcode::GroupVoiceTraffic =>
+                    write_json(&mut msg.data()?, &SerdeEvent {
+                        event: "srcUnit",
+                        payload: control::GroupVoiceTraffic::new(lc).src_unit(),
+                    }),
+
+                _ => Ok(()),
+            }
         }
     }
 }
@@ -324,6 +336,7 @@ pub enum HubEvent {
     UpdateTalkGroup(TalkGroup),
     UpdateSignalPower(f32),
     TrunkingControl(TsbkFields),
+    LinkControl(LinkControlFields),
 }
 
 #[derive(Copy, Clone)]
