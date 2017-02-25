@@ -424,8 +424,8 @@ impl SerdeAltControl {
 #[derive(Serialize, Clone, Copy)]
 pub struct SerdeAdjacentSite {
     area: u8,
-    system: u16,
     rfss: u8,
+    system: u16,
     site: u8,
     freq: u32,
 }
@@ -434,8 +434,8 @@ impl SerdeAdjacentSite {
     pub fn new(s: &fields::AdjacentSite, freq: u32) -> Self {
         SerdeAdjacentSite {
             area: s.area(),
-            system: s.system(),
             rfss: s.rfss(),
+            system: s.system(),
             site: s.site(),
             freq: freq,
         }
