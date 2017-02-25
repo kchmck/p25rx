@@ -230,52 +230,30 @@ impl HubTask {
         Ok(())
     }
 
-    fn stream_event(&mut self, s: &mut TcpStream, e: &HubEvent) -> serde_json::Result<()> {
-        use serde_json::to_writer as write_json;
-
+    fn stream_event(&mut self, mut s: &mut TcpStream, e: &HubEvent) -> Result<(), ()> {
         use self::HubEvent::*;
         use self::StateEvent::*;
 
-        let mut msg = SseMessage::new(s);
-
         match *e {
-            State(UpdateCtlFreq(f)) => write_json(&mut msg.data()?, &SerdeEvent {
-                event: "ctlFreq",
-                payload: f
-            }),
+            State(UpdateCtlFreq(f)) => SerdeEvent::new("ctlFreq", f).write(s),
 
             State(UpdateChannelParams(_)) => Ok(()),
 
-            UpdateCurFreq(f) => write_json(&mut msg.data()?, &SerdeEvent {
-                event: "curFreq",
-                payload: f,
-            }),
+            UpdateCurFreq(f) => SerdeEvent::new("curFreq", f).write(s),
 
-            UpdateTalkGroup(tg) => write_json(&mut msg.data()?, &SerdeEvent {
-                event: "talkGroup",
-                payload: tg,
-            }),
+            UpdateTalkGroup(tg) => SerdeEvent::new("talkGroup", tg).write(s),
 
-            UpdateSignalPower(p) => write_json(&mut msg.data()?, &SerdeEvent {
-                event: "sigPower",
-                payload: p,
-            }),
+            UpdateSignalPower(p) => SerdeEvent::new("sigPower", p).write(s),
 
             // If this event has been received, the TSBK is valid with a known opcode.
             TrunkingControl(tsbk) => match tsbk.opcode().unwrap() {
                 TsbkOpcode::RfssStatusBroadcast =>
-                    write_json(&mut msg.data()?, &SerdeEvent {
-                        event: "rfssStatus",
-                        payload: SerdeRfssStatus::new(
-                            &fields::RfssStatusBroadcast::new(tsbk.payload())),
-                    }),
+                    SerdeEvent::new("rfssStatus", SerdeRfssStatus::new(
+                        &fields::RfssStatusBroadcast::new(tsbk.payload()))).write(s),
 
                 TsbkOpcode::NetworkStatusBroadcast =>
-                    write_json(&mut msg.data()?, &SerdeEvent {
-                        event: "networkStatus",
-                        payload: SerdeNetworkStatus::new(
-                            &fields::NetworkStatusBroadcast::new(tsbk.payload())),
-                    }),
+                    SerdeEvent::new("networkStatus", SerdeNetworkStatus::new(
+                        &fields::NetworkStatusBroadcast::new(tsbk.payload()))).write(s),
 
                 TsbkOpcode::AltControlChannel => {
                     let dec = fields::AltControlChannel::new(tsbk.payload());
@@ -286,12 +264,8 @@ impl HubTask {
                             None => continue,
                         };
 
-                        try!(write_json(&mut msg.data()?, &SerdeEvent {
-                            event: "altControl",
-                            payload: SerdeAltControl::new(&dec, freq),
-                        }));
-
-                        msg.finish().is_ok();
+                        try!(SerdeEvent::new("altControl",
+                            SerdeAltControl::new(&dec, freq)).write(&mut s));
                     }
 
                     Ok(())
@@ -306,10 +280,8 @@ impl HubTask {
                         None => return Ok(()),
                     };
 
-                    write_json(&mut msg.data()?, &SerdeEvent {
-                        event: "adjacentSite",
-                        payload: SerdeAdjacentSite::new(&dec, freq),
-                    })
+                    SerdeEvent::new("adjacentSite",
+                        SerdeAdjacentSite::new(&dec, freq)).write(s)
                 },
 
                 _ => Ok(()),
@@ -318,10 +290,8 @@ impl HubTask {
             // If this event has been received, the LC has a known opcode.
             LinkControl(lc) => match lc.opcode().unwrap() {
                 LinkControlOpcode::GroupVoiceTraffic =>
-                    write_json(&mut msg.data()?, &SerdeEvent {
-                        event: "srcUnit",
-                        payload: control::GroupVoiceTraffic::new(lc).src_unit(),
-                    }),
+                    SerdeEvent::new("srcUnit",
+                        control::GroupVoiceTraffic::new(lc).src_unit()).write(s),
 
                 _ => Ok(()),
             }
@@ -380,6 +350,22 @@ struct SerdeCtlFreq {
 struct SerdeEvent<T: Serialize> {
     event: &'static str,
     payload: T,
+}
+
+impl<T: Serialize> SerdeEvent<T> {
+    pub fn new(event: &'static str, payload: T) -> Self {
+        SerdeEvent {
+            event: event,
+            payload: payload,
+        }
+    }
+
+    pub fn write<W: Write>(&self, stream: W) -> Result<(), ()> {
+        let mut msg = SseMessage::new(stream);
+        let mut data = msg.data().map_err(|_| ())?;
+
+        serde_json::to_writer(&mut data, self).map_err(|_| ())
+    }
 }
 
 #[derive(Serialize, Clone, Copy)]
