@@ -67,15 +67,19 @@ impl RecvTask {
         self.switch_control();
     }
 
-    fn switch_control(&self) {
-        self.set_freq(self.control_freq);
+    fn switch_control(&mut self) {
+        let freq = self.control_freq;
+        self.audio.send(AudioEvent::EndTransmission)
+            .expect("unable to send end of transmission");
+        self.set_freq(freq);
     }
 
-    fn set_freq(&self, freq: u32) {
+    fn set_freq(&mut self, freq: u32) {
         self.hub.send(HubEvent::UpdateCurFreq(freq))
             .expect("unable to send current frequency");
         self.sdr.send(ControlTaskEvent::SetFreq(freq))
             .expect("unable to set freq in sdr");
+        self.msg.recv.resync();
     }
 
     pub fn run<F>(&mut self, mut cb: F)
@@ -107,13 +111,8 @@ impl RecvTask {
             Error(_) => {},
             PacketNID(nid) => {
                 match nid.data_unit {
-                    DataUnit::VoiceLCTerminator | DataUnit::VoiceSimpleTerminator => {
-                        self.switch_control();
-                        self.audio.send(AudioEvent::EndTransmission)
-                            .expect("unable to send end of transmission");
-
-                        self.msg.recv.resync();
-                    },
+                    DataUnit::VoiceLCTerminator | DataUnit::VoiceSimpleTerminator =>
+                        self.switch_control(),
                     _ => {},
                 }
             },
@@ -157,7 +156,6 @@ impl RecvTask {
 
                         for (ch, tg) in updates.iter().cloned() {
                             if self.use_talkgroup(tg, ch) {
-                                self.msg.recv.resync();
                                 break;
                             }
                         }
@@ -182,7 +180,6 @@ impl RecvTask {
         }
 
         self.switch_control();
-        self.msg.recv.resync();
 
         if let TalkGroup::Other(x) = self.cur_talkgroup {
             self.encrypted.insert(x);
