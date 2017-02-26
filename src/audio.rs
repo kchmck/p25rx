@@ -15,20 +15,20 @@ pub enum AudioEvent {
 
 pub struct AudioTask<W: Write> {
     audio: AudioOutput<W>,
-    queue: Receiver<AudioEvent>,
+    events: Receiver<AudioEvent>,
 }
 
 impl<W: Write> AudioTask<W> {
-    pub fn new(audio: AudioOutput<W>, queue: Receiver<AudioEvent>) -> Self {
+    pub fn new(audio: AudioOutput<W>, events: Receiver<AudioEvent>) -> Self {
         AudioTask {
             audio: audio,
-            queue: queue,
+            events: events,
         }
     }
 
     pub fn run(&mut self) {
         loop {
-            match self.queue.recv().expect("unable to receive audio event") {
+            match self.events.recv().expect("unable to receive audio event") {
                 AudioEvent::VoiceFrame(vf) => self.audio.play(&vf),
                 AudioEvent::EndTransmission => {
                    self.audio.flush();
