@@ -3,7 +3,7 @@ use std::sync::mpsc::Receiver;
 use std;
 
 use imbe::consts::SAMPLES_PER_FRAME;
-use imbe::decode::IMBEDecoder;
+use imbe::decode::ImbeDecoder;
 use imbe::frame::ReceivedFrame;
 use map_in_place::MapInPlace;
 use p25::voice::frame::VoiceFrame;
@@ -41,19 +41,19 @@ impl<W: Write> AudioTask<W> {
 
 pub struct AudioOutput<W: Write> {
     stream: W,
-    imbe: IMBEDecoder,
+    imbe: ImbeDecoder,
 }
 
 impl<W: Write> AudioOutput<W> {
     pub fn new(stream: W) -> Self {
         AudioOutput {
             stream: stream,
-            imbe: IMBEDecoder::new(),
+            imbe: ImbeDecoder::new(),
         }
     }
 
     pub fn reset(&mut self) {
-        self.imbe = IMBEDecoder::new();
+        self.imbe = ImbeDecoder::new();
     }
 
     pub fn play(&mut self, frame: &VoiceFrame) {

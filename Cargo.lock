@@ -138,7 +138,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "imbe"
 version = "1.0.0"
-source = "git+https://github.com/kchmck/imbe.rs#0a467ed833136855e2cfdb73fd82e0f60a8ddbb2"
+source = "git+https://github.com/kchmck/imbe.rs#8bf88e0325339e9eca43400b957a903e051ec4b5"
 dependencies = [
  "arrayvec 0.3.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "collect_slice 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
