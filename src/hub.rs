@@ -217,6 +217,15 @@ impl HubTask {
 
                 Ok(())
             },
+            (Method::Options, _) => {
+                let mut h = HeaderLines::new(req.into_stream());
+
+                http::send_head(&mut h, StatusCode::Ok).is_ok();
+                write!(h.line(), "Access-Control-Allow-Methods: GET, PUT").is_ok();
+                write!(h.line(), "Access-Control-Allow-Headers: Content-Type").is_ok();
+
+                Ok(())
+            },
             _ => Err(StatusCode::MethodNotAllowed),
         }
     }
