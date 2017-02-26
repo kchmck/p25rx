@@ -16,7 +16,7 @@ use throttle::Throttler;
 
 use hub::HubEvent;
 use recv::ReceiverEvent;
-use consts::{BUF_SIZE_COMPLEX, BASEBAND_SAMPLE_RATE};
+use consts::{BUF_SAMPLES, BASEBAND_SAMPLE_RATE};
 
 const FM_DEV: u32 = 5000;
 const IMPEDANCE: f32 = 50.0;
@@ -49,8 +49,8 @@ impl DemodTask {
     }
 
     pub fn run(&mut self) {
-        let mut pool = Pool::with_capacity(16, || vec![0.0; BUF_SIZE_COMPLEX]);
-        let mut samples = vec![Complex32::zero(); BUF_SIZE_COMPLEX];
+        let mut pool = Pool::with_capacity(16, || vec![0.0; BUF_SAMPLES]);
+        let mut samples = vec![Complex32::zero(); BUF_SAMPLES];
 
         // Used to reduce the number of signal level messages sent.
         let mut notifier = Throttler::new(16);
@@ -61,11 +61,11 @@ impl DemodTask {
             // This is safe because it's transforming an array of N bytes to an array of
             // N/2 16-bit words.
             let pairs = unsafe {
-                std::slice::from_raw_parts(bytes.as_ptr() as *const u16, BUF_SIZE_COMPLEX)
+                std::slice::from_raw_parts(bytes.as_ptr() as *const u16, BUF_SAMPLES)
             };
 
             // This is safe because it equals the original allocation length.
-            unsafe { samples.set_len(BUF_SIZE_COMPLEX); }
+            unsafe { samples.set_len(BUF_SAMPLES); }
 
             // Transform interleaved byte pairs to complex floating point samples.
             pairs.iter()
