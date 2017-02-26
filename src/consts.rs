@@ -1,9 +1,9 @@
 /// Number of SDR sample byffers to allocate.
 pub const BUF_COUNT: usize = 16;
 /// Size of each SDR sample buffer (bytes).
-pub const BUF_SIZE_RAW: usize = 32768;
+pub const BUF_BYTES: usize = 32768;
 /// Number of samples after transforming byte pairs to complex samples.
-pub const BUF_SIZE_COMPLEX: usize = BUF_SIZE_RAW / 2;
+pub const BUF_SIZE_COMPLEX: usize = BUF_BYTES / 2;
 
 /// Sample rate for the SDR.
 pub const SDR_SAMPLE_RATE: u32 = 240_000;

@@ -3,7 +3,7 @@ use std::sync::mpsc::{Sender, Receiver};
 use pool::{Pool, Checkout};
 use rtlsdr::{Controller, Reader};
 
-use consts::{BUF_SIZE_RAW, BUF_COUNT};
+use consts::{BUF_BYTES, BUF_COUNT};
 
 pub struct ReadTask {
     chan: Sender<Checkout<Vec<u8>>>,
@@ -17,9 +17,9 @@ impl ReadTask {
     }
 
     pub fn run(&mut self, mut reader: Reader) {
-        let mut pool = Pool::with_capacity(16, || vec![0; BUF_SIZE_RAW]);
+        let mut pool = Pool::with_capacity(16, || vec![0; BUF_BYTES]);
 
-        reader.read_async(BUF_COUNT as u32, BUF_SIZE_RAW as u32, |bytes| {
+        reader.read_async(BUF_COUNT as u32, BUF_BYTES as u32, |bytes| {
             let mut samples = pool.checkout().expect("unable to allocate samples");
             (&mut samples[..]).copy_from_slice(bytes);
             self.chan.send(samples).expect("unable to send sdr samples");
