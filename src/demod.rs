@@ -1,3 +1,5 @@
+//! Demodulation and other signal processing.
+
 use std::sync::mpsc::{Sender, Receiver};
 use std;
 
@@ -18,17 +20,28 @@ use hub::HubEvent;
 use recv::ReceiverEvent;
 use consts::{BUF_SAMPLES, BASEBAND_SAMPLE_RATE};
 
+/// Demodulates raw I/Q signal to C4FM baseband.
 pub struct DemodTask {
+    /// Decimates I/Q signal.
     decim: Decimator<Decimate5, DecimFIR>,
+    /// Channel-select lowpass filter.
     bandpass: FIRFilter<BandpassFIR>,
+    /// Deemphasis lowpass filter.
     deemph: FIRFilter<DeemphFIR>,
+    /// Demodulates FM signal.
     demod: FmDemod,
+    /// Channel for receiving I/Q sample chunks.
     reader: Receiver<Checkout<Vec<u8>>>,
+    /// Channel for the hub.
     hub: mio::channel::Sender<HubEvent>,
+    /// Channel for sending baseband sample chunks.
     chan: Sender<ReceiverEvent>,
 }
 
 impl DemodTask {
+    /// Create a new `DemodTask` that receives I/Q sample chunks from the first given
+    /// channel, sends events to the second given hub, and sends baseband sample chunks to
+    /// the third given channel.
     pub fn new(reader: Receiver<Checkout<Vec<u8>>>,
                hub: mio::channel::Sender<HubEvent>,
                chan: Sender<ReceiverEvent>)
@@ -38,7 +51,7 @@ impl DemodTask {
             decim: Decimator::new(),
             bandpass: FIRFilter::new(),
             deemph: FIRFilter::new(),
-            /// Assume a 5kHz frequency deviation.
+            // Assume a 5kHz frequency deviation.
             demod: FmDemod::new(5000, BASEBAND_SAMPLE_RATE),
             reader: reader,
             hub: hub,
@@ -46,6 +59,7 @@ impl DemodTask {
         }
     }
 
+    /// Begin demodulating, blocking the current thread.
     pub fn run(&mut self) {
         let mut pool = Pool::with_capacity(16, || vec![0.0; BUF_SAMPLES]);
         let mut samples = vec![Complex32::zero(); BUF_SAMPLES];
@@ -56,8 +70,8 @@ impl DemodTask {
         loop {
             let bytes = self.reader.recv().expect("unable to receive sdr samples");
 
-            // This is safe because it's transforming an array of N bytes to an array of
-            // N/2 16-bit words.
+            // This is safe because it's transforming an array of N 8-bit words to an
+            // array of N/2 16-bit words.
             let pairs = unsafe {
                 std::slice::from_raw_parts(bytes.as_ptr() as *const u16, BUF_SAMPLES)
             };
@@ -70,11 +84,13 @@ impl DemodTask {
                  .map(|&s| unsafe { *IQ.get_unchecked(s as usize) })
                  .collect_slice(&mut samples[..]);
 
+            // Decimate from SDR to baseband sample rate.
             let len = self.decim.decim_in_place(&mut samples[..]);
 
             // This is safe because the decimated length is less than the original length.
             unsafe { samples.set_len(len); }
 
+            // Apply bandpass filter to attenuate out-of-channel interference.
             samples.map_in_place(|&s| self.bandpass.feed(s));
 
             notifier.throttle(|| {
@@ -90,10 +106,12 @@ impl DemodTask {
             // This is safe because each input sample produces exactly one output sample.
             unsafe { baseband.set_len(samples.len()); }
 
+            // Demodulate FM signal to C4FM baseband.
             samples.iter()
                    .map(|&s| self.demod.feed(s))
                    .collect_slice(&mut baseband[..]);
 
+            // Apply deemphasis filter.
             baseband.map_in_place(|&s| self.deemph.feed(s));
 
             self.chan.send(ReceiverEvent::Baseband(baseband))
@@ -102,6 +120,7 @@ impl DemodTask {
     }
 }
 
+/// Decimates from 240kHz to 48kHz.
 struct Decimate5;
 
 impl DecimationFactor for Decimate5 {
