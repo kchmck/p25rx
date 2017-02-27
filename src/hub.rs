@@ -22,7 +22,7 @@ use uhttp_uri::HttpResource;
 use uhttp_version::HttpVersion;
 
 use http;
-use recv::ReceiverEvent;
+use recv::RecvEvent;
 
 pub enum Route {
     Subscribe,
@@ -52,11 +52,11 @@ pub struct HubTask {
     requests: ArrayVec<[TcpStream; 32]>,
     map: [usize; 32],
     chan: Receiver<HubEvent>,
-    recv: Sender<ReceiverEvent>,
+    recv: Sender<RecvEvent>,
 }
 
 impl HubTask {
-    pub fn new(chan: Receiver<HubEvent>, recv: Sender<ReceiverEvent>, addr: &SocketAddr)
+    pub fn new(chan: Receiver<HubEvent>, recv: Sender<RecvEvent>, addr: &SocketAddr)
         -> std::io::Result<Self>
     {
         let socket = TcpListener::bind(addr)?;
@@ -210,7 +210,7 @@ impl HubTask {
 
                 // TODO: verify frequency range.
 
-                try!(self.recv.send(ReceiverEvent::SetControlFreq(msg.ctlfreq))
+                try!(self.recv.send(RecvEvent::SetControlFreq(msg.ctlfreq))
                     .map_err(|_| StatusCode::InternalServerError));
 
                 http::send_status(req.into_stream(), StatusCode::Ok).is_ok();

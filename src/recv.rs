@@ -17,7 +17,7 @@ use audio::{AudioEvent, AudioOutput};
 use sdr::ControlTaskEvent;
 use hub::{HubEvent, StateEvent};
 
-pub enum ReceiverEvent {
+pub enum RecvEvent {
     Baseband(Checkout<Vec<f32>>),
     SetControlFreq(u32),
 }
@@ -28,7 +28,7 @@ pub struct RecvTask {
     channels: ChannelParamsMap,
     cur_talkgroup: TalkGroup,
     encrypted: HashSet<u16, BuildHasherDefault<FnvHasher>>,
-    events: Receiver<ReceiverEvent>,
+    events: Receiver<RecvEvent>,
     hub: mio::channel::Sender<HubEvent>,
     sdr: Sender<ControlTaskEvent>,
     audio: Sender<AudioEvent>,
@@ -36,7 +36,7 @@ pub struct RecvTask {
 
 impl RecvTask {
     pub fn new(freq: u32,
-               events: Receiver<ReceiverEvent>,
+               events: Receiver<RecvEvent>,
                hub: mio::channel::Sender<HubEvent>,
                sdr: Sender<ControlTaskEvent>,
                audio: Sender<AudioEvent>)
@@ -87,14 +87,14 @@ impl RecvTask {
     {
         loop {
             match self.events.recv().expect("unable to receive baseband") {
-                ReceiverEvent::Baseband(samples) => {
+                RecvEvent::Baseband(samples) => {
                     for &s in samples.iter() {
                         self.handle_sample(s);
                     }
 
                     cb(&samples[..]);
                 },
-                ReceiverEvent::SetControlFreq(freq) => self.set_control_freq(freq),
+                RecvEvent::SetControlFreq(freq) => self.set_control_freq(freq),
             }
         }
     }

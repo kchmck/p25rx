@@ -17,7 +17,7 @@ use static_fir::FIRFilter;
 use throttle::Throttler;
 
 use hub::HubEvent;
-use recv::ReceiverEvent;
+use recv::RecvEvent;
 use consts::{BUF_SAMPLES, BASEBAND_SAMPLE_RATE};
 
 /// Demodulates raw I/Q signal to C4FM baseband.
@@ -35,7 +35,7 @@ pub struct DemodTask {
     /// Channel for the hub.
     hub: mio::channel::Sender<HubEvent>,
     /// Channel for sending baseband sample chunks.
-    chan: Sender<ReceiverEvent>,
+    chan: Sender<RecvEvent>,
 }
 
 impl DemodTask {
@@ -44,7 +44,7 @@ impl DemodTask {
     /// the third given channel.
     pub fn new(reader: Receiver<Checkout<Vec<u8>>>,
                hub: mio::channel::Sender<HubEvent>,
-               chan: Sender<ReceiverEvent>)
+               chan: Sender<RecvEvent>)
         -> Self
     {
         DemodTask {
@@ -114,7 +114,7 @@ impl DemodTask {
             // Apply deemphasis filter.
             baseband.map_in_place(|&s| self.deemph.feed(s));
 
-            self.chan.send(ReceiverEvent::Baseband(baseband))
+            self.chan.send(RecvEvent::Baseband(baseband))
                 .expect("unable to send baseband");
         }
     }
