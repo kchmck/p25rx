@@ -18,8 +18,6 @@ use hub::HubEvent;
 use recv::ReceiverEvent;
 use consts::{BUF_SAMPLES, BASEBAND_SAMPLE_RATE};
 
-const FM_DEV: u32 = 5000;
-
 pub struct DemodTask {
     decim: Decimator<Decimate5, DecimFIR>,
     bandpass: FIRFilter<BandpassFIR>,
@@ -40,7 +38,8 @@ impl DemodTask {
             decim: Decimator::new(),
             bandpass: FIRFilter::new(),
             deemph: FIRFilter::new(),
-            demod: FmDemod::new(FM_DEV, BASEBAND_SAMPLE_RATE),
+            /// Assume a 5kHz frequency deviation.
+            demod: FmDemod::new(5000, BASEBAND_SAMPLE_RATE),
             reader: reader,
             hub: hub,
             chan: chan,
