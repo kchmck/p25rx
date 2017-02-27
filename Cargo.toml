@@ -12,6 +12,7 @@ chrono = "0.2.25"
 clap = "^2.12.1"
 collect_slice = "^1.2.0"
 crossbeam = "0.2.0"
+demod_fm = "1.0.0"
 fnv = "^1.0.5"
 libc = "^0.2.8"
 mio = "0.6.4"
@@ -30,7 +31,6 @@ uhttp_status = "0.10.0"
 uhttp_uri = "0.5.1"
 uhttp_version = "0.6.0"
 
-demod_fm = {version = "^0.1.0", git = "https://github.com/kchmck/demod_fm.rs"}
 imbe = {version = "^1.0.0", git = "https://github.com/kchmck/imbe.rs"}
 map_in_place = {version = "^1.0.0", git = "https://github.com/kchmck/map_in_place.rs"}
 p25 = {version = "^1.0.0", git = "https://github.com/kchmck/p25.rs", features = ["ser"]}

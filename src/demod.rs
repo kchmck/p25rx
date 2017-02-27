@@ -2,7 +2,7 @@ use std::sync::mpsc::{Sender, Receiver};
 use std;
 
 use collect_slice::CollectSlice;
-use demod_fm::FMDemod;
+use demod_fm::FmDemod;
 use map_in_place::MapInPlace;
 use mio;
 use num::complex::Complex32;
@@ -25,7 +25,7 @@ pub struct DemodTask {
     decim: Decimator<Decimate5, DecimFIR>,
     bandpass: FIRFilter<BandpassFIR>,
     deemph: FIRFilter<DeemphFIR>,
-    demod: FMDemod,
+    demod: FmDemod,
     reader: Receiver<Checkout<Vec<u8>>>,
     hub: mio::channel::Sender<HubEvent>,
     chan: Sender<ReceiverEvent>,
@@ -41,7 +41,7 @@ impl DemodTask {
             decim: Decimator::new(),
             bandpass: FIRFilter::new(),
             deemph: FIRFilter::new(),
-            demod: FMDemod::new(FM_DEV as f32 / BASEBAND_SAMPLE_RATE as f32),
+            demod: FmDemod::new(FM_DEV, BASEBAND_SAMPLE_RATE),
             reader: reader,
             hub: hub,
             chan: chan,
