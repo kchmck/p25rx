@@ -171,7 +171,7 @@ fn main() {
     let mut control = ControlTask::new(control, rx_ctl);
     let mut read = ReadTask::new(tx_read);
     let mut demod = DemodTask::new(rx_read, tx_hub.clone(), tx_recv.clone());
-    let mut receiver = RecvTask::new(freq, rx_recv, tx_hub.clone(),
+    let mut recv = RecvTask::new(freq, rx_recv, tx_hub.clone(),
         tx_ctl.clone(), tx_audio.clone());
     let mut audio = AudioTask::new(audio_out(), rx_audio);
 
@@ -200,7 +200,7 @@ fn main() {
             prctl::set_name("receiver").unwrap();
 
             if let Some(mut f) = samples_file {
-                receiver.run(|samples| {
+                recv.run(|samples| {
                     f.write_all(unsafe {
                         std::slice::from_raw_parts(
                             samples.as_ptr() as *const u8,
@@ -209,7 +209,7 @@ fn main() {
                     }).expect("unable to write baseband");
                 })
             } else {
-                receiver.run(|_| {})
+                recv.run(|_| {})
             }
         });
 
