@@ -24,6 +24,7 @@ pub enum RecvEvent {
 
 pub struct RecvTask {
     ctlfreq: u32,
+    curfreq: u32,
     msg: MessageReceiver,
     channels: ChannelParamsMap,
     curgroup: TalkGroup,
@@ -44,6 +45,7 @@ impl RecvTask {
     {
         RecvTask {
             ctlfreq: std::u32::MAX,
+            curfreq: std::u32::MAX,
             msg: MessageReceiver::new(),
             channels: ChannelParamsMap::default(),
             curgroup: TalkGroup::Default,
@@ -75,10 +77,13 @@ impl RecvTask {
     }
 
     fn set_freq(&mut self, freq: u32) {
+        self.curfreq = freq;
+
         self.hub.send(HubEvent::UpdateCurFreq(freq))
             .expect("unable to send current frequency");
         self.sdr.send(ControlTaskEvent::SetFreq(freq))
             .expect("unable to set freq in sdr");
+
         self.msg.recv.resync();
     }
 
