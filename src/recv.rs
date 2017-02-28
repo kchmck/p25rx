@@ -26,7 +26,7 @@ pub struct RecvTask {
     control_freq: u32,
     msg: MessageReceiver,
     channels: ChannelParamsMap,
-    cur_talkgroup: TalkGroup,
+    curgroup: TalkGroup,
     encrypted: HashSet<u16, BuildHasherDefault<FnvHasher>>,
     events: Receiver<RecvEvent>,
     hub: mio::channel::Sender<HubEvent>,
@@ -46,7 +46,7 @@ impl RecvTask {
             control_freq: std::u32::MAX,
             msg: MessageReceiver::new(),
             channels: ChannelParamsMap::default(),
-            cur_talkgroup: TalkGroup::Default,
+            curgroup: TalkGroup::Default,
             encrypted: HashSet::default(),
             events: events,
             hub: hub,
@@ -181,7 +181,7 @@ impl RecvTask {
 
         self.switch_control();
 
-        if let TalkGroup::Other(x) = self.cur_talkgroup {
+        if let TalkGroup::Other(x) = self.curgroup {
             self.encrypted.insert(x);
         }
     }
@@ -198,7 +198,7 @@ impl RecvTask {
             None => return false,
         };
 
-        self.cur_talkgroup = tg;
+        self.curgroup = tg;
 
         self.set_freq(freq);
         self.hub.send(HubEvent::UpdateTalkGroup(tg))
