@@ -1,12 +1,14 @@
 use std::convert::TryFrom;
 use std::io::{Write, ErrorKind};
 use std::net::SocketAddr;
+use std::os::unix::io::{RawFd, FromRawFd, IntoRawFd};
 use std::sync::mpsc::{Sender, TryRecvError};
 use std;
 
 use arrayvec::ArrayVec;
 use mio::channel::{Receiver};
 use mio::tcp::{TcpListener, TcpStream};
+use mio::unix::EventedFd;
 use mio::{Poll, PollOpt, Token, Event, Events, Ready};
 use p25::trunking::fields::{self, TalkGroup, ChannelParamsMap};
 use p25::trunking::tsbk::{TsbkFields, TsbkOpcode};
@@ -41,16 +43,40 @@ impl<'a> TryFrom<HttpResource<'a>> for Route {
     }
 }
 
-const CONNS: Token = Token(1000);
-const EVENTS: Token = Token(2000);
+#[repr(i32)]
+enum HubToken {
+    /// Socket connection.
+    Conns,
+    /// Channel events.
+    Events,
+    /// Request stream with contained file descriptor.
+    Request(i32),
+}
+
+impl From<HubToken> for Token {
+    fn from(tok: HubToken) -> Self {
+        Token(unsafe { std::mem::transmute(tok) })
+    }
+}
+
+impl From<Token> for HubToken {
+    fn from(tok: Token) -> Self {
+        let Token(tok) = tok;
+        unsafe { std::mem::transmute(tok) }
+    }
+}
+
+impl From<RawFd> for HubToken {
+    fn from(fd: RawFd) -> Self {
+        HubToken::Request(fd)
+    }
+}
 
 pub struct HubTask {
     state: State,
     socket: TcpListener,
     events: Poll,
     streamers: ArrayVec<[TcpStream; 4]>,
-    requests: ArrayVec<[TcpStream; 32]>,
-    map: [usize; 32],
     chan: Receiver<HubEvent>,
     recv: Sender<RecvEvent>,
 }
@@ -62,16 +88,16 @@ impl HubTask {
         let socket = TcpListener::bind(addr)?;
         let events = Poll::new()?;
 
-        try!(events.register(&socket, CONNS, Ready::readable(), PollOpt::edge()));
-        try!(events.register(&chan, EVENTS, Ready::readable(), PollOpt::edge()));
+        try!(events.register(&socket, HubToken::Conns.into(), Ready::readable(),
+            PollOpt::edge()));
+        try!(events.register(&chan, HubToken::Events.into(), Ready::readable(),
+            PollOpt::edge()));
 
         Ok(HubTask {
             state: State::default(),
             socket: socket,
             events: events,
             streamers: ArrayVec::new(),
-            requests: ArrayVec::new(),
-            map: [std::usize::MAX; 32],
             chan: chan,
             recv: recv,
         })
@@ -91,19 +117,16 @@ impl HubTask {
     }
 
     fn handle_event(&mut self, e: Event) {
-        match e.token() {
-            CONNS => self.handle_conns().expect("unable to handle connection"),
-            EVENTS => self.handle_chan().expect("unable to handle channel event"),
-            Token(idx) => {
-                let idx = self.map[idx];
-                self.map[idx] = std::usize::MAX;
+        match e.token().into() {
+            HubToken::Conns =>
+                self.handle_conns().expect("unable to handle connection"),
+            HubToken::Events =>
+                self.handle_chan().expect("unable to handle channel event"),
+            HubToken::Request(fd) => {
+                let stream = unsafe { TcpStream::from_raw_fd(fd) };
 
-                let stream = self.requests.swap_remove(idx).unwrap();
                 self.events.deregister(&stream)
                     .expect("unable to deregister stream");
-
-                let swapped = self.requests.len();
-                self.map[swapped] = idx;
 
                 self.handle_stream(stream);
             },
@@ -114,22 +137,19 @@ impl HubTask {
         loop {
             let (stream, _) = match self.socket.accept() {
                 Ok(x) => x,
-                Err(ref e) if e.kind() == ErrorKind::WouldBlock => return Ok(()),
-                Err(_) => return Err(()),
+                Err(e) => return if e.kind() == ErrorKind::WouldBlock {
+                    Ok(())
+                } else {
+                    Err(())
+                },
             };
 
-            if self.requests.is_full() {
-                http::send_status(&stream, StatusCode::TooManyRequests).is_ok();
-                continue;
-            }
+            let fd = stream.into_raw_fd();
+            let tok = HubToken::from(fd);
+            let event = EventedFd(&fd);
 
-            let idx = self.requests.len();
-
-            self.events.register(&stream, Token(idx), Ready::readable(), PollOpt::edge())
+            self.events.register(&event, tok.into(), Ready::readable(), PollOpt::edge())
                 .expect("unable to register stream");
-
-            self.requests.push(stream);
-            self.map[idx] = idx;
         }
     }
 
