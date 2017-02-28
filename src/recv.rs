@@ -23,7 +23,7 @@ pub enum RecvEvent {
 }
 
 pub struct RecvTask {
-    control_freq: u32,
+    ctlfreq: u32,
     msg: MessageReceiver,
     channels: ChannelParamsMap,
     curgroup: TalkGroup,
@@ -43,7 +43,7 @@ impl RecvTask {
         -> Self
     {
         RecvTask {
-            control_freq: std::u32::MAX,
+            ctlfreq: std::u32::MAX,
             msg: MessageReceiver::new(),
             channels: ChannelParamsMap::default(),
             curgroup: TalkGroup::Default,
@@ -61,14 +61,14 @@ impl RecvTask {
     }
 
     fn set_control_freq(&mut self, freq: u32) {
-        self.control_freq = freq;
+        self.ctlfreq = freq;
         self.hub.send(HubEvent::State(StateEvent::UpdateCtlFreq(freq)))
             .expect("unable to send control frequency");
         self.switch_control();
     }
 
     fn switch_control(&mut self) {
-        let freq = self.control_freq;
+        let freq = self.ctlfreq;
         self.audio.send(AudioEvent::EndTransmission)
             .expect("unable to send end of transmission");
         self.set_freq(freq);
