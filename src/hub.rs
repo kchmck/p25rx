@@ -43,32 +43,51 @@ impl<'a> TryFrom<HttpResource<'a>> for Route {
     }
 }
 
-#[repr(i32)]
+/// Async event types.
+///
+/// The complications around forcing this type to be 32 bits is to support platforms with
+/// 32-bit `usize`.
+#[repr(u16)]
 enum HubToken {
     /// Socket connection.
     Conns,
     /// Channel events.
     Events,
     /// Request stream with contained file descriptor.
-    Request(i32),
+    Request(SmallFd),
 }
 
 impl From<HubToken> for Token {
     fn from(tok: HubToken) -> Self {
-        Token(unsafe { std::mem::transmute(tok) })
+        // This is safe because a HubToken is guaranteed to fit in 32 bits.
+        Token(unsafe { std::mem::transmute::<_, u32>(tok) } as usize)
     }
 }
 
 impl From<Token> for HubToken {
     fn from(tok: Token) -> Self {
-        let Token(tok) = tok;
-        unsafe { std::mem::transmute(tok) }
+        // This is safe because, in this module, Tokens are only created from HubTokens,
+        // so the transmute will map back to a valid HubToken.
+        unsafe { std::mem::transmute(tok.0 as u32) }
     }
 }
 
-impl From<RawFd> for HubToken {
+/// A 16-bit file descriptor.
+///
+/// This assumes file descriptors fit into 16 bits, which seems like a safe
+/// assumption (http://unix.stackexchange.com/questions/84227).
+struct SmallFd(u16);
+
+impl From<RawFd> for SmallFd {
     fn from(fd: RawFd) -> Self {
-        HubToken::Request(fd)
+        assert!(fd > 0 && fd >> 16 == 0);
+        SmallFd(fd as u16)
+    }
+}
+
+impl From<SmallFd> for RawFd {
+    fn from(fd: SmallFd) -> Self {
+        fd.0 as RawFd
     }
 }
 
@@ -123,7 +142,7 @@ impl HubTask {
             HubToken::Events =>
                 self.handle_chan().expect("unable to handle channel event"),
             HubToken::Request(fd) => {
-                let stream = unsafe { TcpStream::from_raw_fd(fd) };
+                let stream = unsafe { TcpStream::from_raw_fd(fd.into()) };
 
                 self.events.deregister(&stream)
                     .expect("unable to deregister stream");
@@ -145,7 +164,7 @@ impl HubTask {
             };
 
             let fd = stream.into_raw_fd();
-            let tok = HubToken::from(fd);
+            let tok = HubToken::Request(fd.into());
             let event = EventedFd(&fd);
 
             self.events.register(&event, tok.into(), Ready::readable(), PollOpt::edge())
