@@ -89,9 +89,7 @@ impl RecvTask {
         self.msg.recv.resync();
     }
 
-    pub fn run<F>(&mut self, mut cb: F)
-        where F: FnMut(&[f32])
-    {
+    pub fn run<F: FnMut(&[f32])>(&mut self, mut cb: F) {
         loop {
             match self.events.recv().expect("unable to receive baseband") {
                 RecvEvent::Baseband(samples) => {
