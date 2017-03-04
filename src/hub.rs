@@ -43,51 +43,54 @@ impl<'a> TryFrom<HttpResource<'a>> for Route {
     }
 }
 
+const CONNS: usize = 1 << 31;
+const EVENTS: usize = 1 << 30;
+const REQUEST: usize = 1 << 29;
+
+/// Allow 24 bits for file descriptors
+///
+/// This assumes file descriptors don't require the full 32 bits, which seems like a
+/// safe assumption (http://unix.stackexchange.com/questions/84227).
+const FD_MASK: RawFd = (1 << 24) - 1;
+
 /// Async event types.
 ///
-/// The complications around forcing this type to be 32 bits is to support platforms with
-/// 32-bit `usize`.
-#[repr(u16)]
-enum HubToken {
+/// The complications around packing this type into 32-bit `Token`s is to support
+/// platforms with 32-bit `usize`.
+pub enum HubToken {
     /// Socket connection.
     Conns,
     /// Channel events.
     Events,
     /// Request stream with contained file descriptor.
-    Request(SmallFd),
+    Request(RawFd),
 }
 
 impl From<HubToken> for Token {
     fn from(tok: HubToken) -> Self {
-        // This is safe because a HubToken is guaranteed to fit in 32 bits.
-        Token(unsafe { std::mem::transmute::<_, u32>(tok) } as usize)
+        Token(match tok {
+            HubToken::Conns => CONNS,
+            HubToken::Events => EVENTS,
+            HubToken::Request(fd) => REQUEST | fd as usize
+        })
     }
 }
 
 impl From<Token> for HubToken {
     fn from(tok: Token) -> Self {
-        // This is safe because, in this module, Tokens are only created from HubTokens,
-        // so the transmute will map back to a valid HubToken.
-        unsafe { std::mem::transmute(tok.0 as u32) }
+        match tok.0 {
+            CONNS => HubToken::Conns,
+            EVENTS => HubToken::Events,
+            b if b & REQUEST != 0 => HubToken::Request(b as RawFd & FD_MASK),
+            _ => panic!("unknown token"),
+        }
     }
 }
 
-/// A 16-bit file descriptor.
-///
-/// This assumes file descriptors fit into 16 bits, which seems like a safe
-/// assumption (http://unix.stackexchange.com/questions/84227).
-struct SmallFd(u16);
-
-impl From<RawFd> for SmallFd {
-    fn from(fd: RawFd) -> Self {
-        assert!(fd > 0 && fd >> 16 == 0);
-        SmallFd(fd as u16)
-    }
-}
-
-impl From<SmallFd> for RawFd {
-    fn from(fd: SmallFd) -> Self {
-        fd.0 as RawFd
+impl HubToken {
+    pub fn for_request(fd: RawFd) -> Self {
+        assert!(fd & !FD_MASK == 0);
+        HubToken::Request(fd)
     }
 }
 
@@ -164,7 +167,7 @@ impl HubTask {
             };
 
             let fd = stream.into_raw_fd();
-            let tok = HubToken::Request(fd.into());
+            let tok = HubToken::for_request(fd);
             let event = EventedFd(&fd);
 
             self.events.register(&event, tok.into(), Ready::readable(), PollOpt::edge())
