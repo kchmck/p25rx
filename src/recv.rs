@@ -70,9 +70,11 @@ impl RecvTask {
     }
 
     fn switch_control(&mut self) {
-        let freq = self.ctlfreq;
         self.audio.send(AudioEvent::EndTransmission)
             .expect("unable to send end of transmission");
+
+        // FIXME: non-lexical borrowing
+        let freq = self.ctlfreq;
         self.set_freq(freq);
     }
 
