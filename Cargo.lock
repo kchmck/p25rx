@@ -1,43 +1,3 @@
-[root]
-name = "p25rx"
-version = "1.0.0"
-dependencies = [
- "arrayvec 0.3.20 (registry+https://github.com/rust-lang/crates.io-index)",
- "chan 0.1.19 (registry+https://github.com/rust-lang/crates.io-index)",
- "chrono 0.2.25 (registry+https://github.com/rust-lang/crates.io-index)",
- "clap 2.20.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "collect_slice 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "crossbeam 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "demod_fm 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "fnv 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "imbe 1.0.0 (git+https://github.com/kchmck/imbe.rs)",
- "libc 0.2.20 (registry+https://github.com/rust-lang/crates.io-index)",
- "map_in_place 1.0.0 (git+https://github.com/kchmck/map_in_place.rs)",
- "mio 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "num 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
- "p25 1.0.0 (git+https://github.com/kchmck/p25.rs)",
- "p25_filts 1.0.0 (git+https://github.com/kchmck/p25_filts.rs)",
- "pool 0.1.3 (git+https://github.com/kchmck/pool)",
- "prctl 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
- "rtlsdr 2.0.0 (git+https://github.com/kchmck/rtlsdr.rs)",
- "rtlsdr_iq 1.0.0 (git+https://github.com/kchmck/rtlsdr_iq.rs)",
- "serde 0.9.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 0.9.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 0.9.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "static_decimate 1.0.0 (git+https://github.com/kchmck/static_decimate.rs)",
- "static_fir 1.0.0 (git+https://github.com/kchmck/static_fir.rs)",
- "throttle 1.0.0 (git+https://github.com/kchmck/throttle.rs)",
- "uhttp_chunked_write 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "uhttp_json_api 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "uhttp_method 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "uhttp_response_header 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "uhttp_sse 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "uhttp_status 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "uhttp_uri 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "uhttp_version 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
 [[package]]
 name = "ansi_term"
 version = "0.9.0"
@@ -130,7 +90,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "imbe"
 version = "1.0.0"
-source = "git+https://github.com/kchmck/imbe.rs#8bf88e0325339e9eca43400b957a903e051ec4b5"
+source = "git+https://github.com/kchmck/imbe.rs#eefd26912eaf8bdc9ce12c040457d0b9a728da61"
 dependencies = [
  "arrayvec 0.3.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "collect_slice 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -324,7 +284,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "p25"
 version = "1.0.0"
-source = "git+https://github.com/kchmck/p25.rs#0911bcec490ad4b5afbbfa7b61245e6e28636128"
+source = "git+https://github.com/kchmck/p25.rs#1428161b5bfc8bbc290f4af955ab319d2bf5d063"
 dependencies = [
  "collect_slice 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -341,6 +301,46 @@ source = "git+https://github.com/kchmck/p25_filts.rs#f5eb655dd1c9baf9efe36e26f9f
 dependencies = [
  "num 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "static_fir 1.0.0 (git+https://github.com/kchmck/static_fir.rs)",
+]
+
+[[package]]
+name = "p25rx"
+version = "1.0.0"
+dependencies = [
+ "arrayvec 0.3.20 (registry+https://github.com/rust-lang/crates.io-index)",
+ "chan 0.1.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "chrono 0.2.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clap 2.20.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "collect_slice 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "crossbeam 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "demod_fm 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fnv 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "imbe 1.0.0 (git+https://github.com/kchmck/imbe.rs)",
+ "libc 0.2.20 (registry+https://github.com/rust-lang/crates.io-index)",
+ "map_in_place 1.0.0 (git+https://github.com/kchmck/map_in_place.rs)",
+ "mio 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
+ "p25 1.0.0 (git+https://github.com/kchmck/p25.rs)",
+ "p25_filts 1.0.0 (git+https://github.com/kchmck/p25_filts.rs)",
+ "pool 0.1.3 (git+https://github.com/kchmck/pool)",
+ "prctl 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rtlsdr 2.0.0 (git+https://github.com/kchmck/rtlsdr.rs)",
+ "rtlsdr_iq 1.0.0 (git+https://github.com/kchmck/rtlsdr_iq.rs)",
+ "serde 0.9.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 0.9.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 0.9.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "static_decimate 1.0.0 (git+https://github.com/kchmck/static_decimate.rs)",
+ "static_fir 1.0.0 (git+https://github.com/kchmck/static_fir.rs)",
+ "throttle 1.0.0 (git+https://github.com/kchmck/throttle.rs)",
+ "uhttp_chunked_write 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uhttp_json_api 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uhttp_method 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uhttp_response_header 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uhttp_sse 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uhttp_status 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uhttp_uri 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uhttp_version 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -561,7 +561,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "uhttp_json_api"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "serde 0.9.7 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -749,7 +749,7 @@ dependencies = [
 "checksum uhttp_chunked_bytes 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "12a4e31dc0b8518ea7be2ec08e9b39619fd4e4490a124190807998fc76d23ea6"
 "checksum uhttp_chunked_write 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "0aedb877ea6a22312470262d8ecb665227e6c84f619a9997d8435987f206dace"
 "checksum uhttp_content_encoding 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "1564f1345214ec826f8029ecd3841b56b12f7a40bdf34a08a05f14480a1b2cc1"
-"checksum uhttp_json_api 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8728c9eb2100f61bf3f588ddf9f1769794077fe5cd7ae11918b1ad451a3c7a34"
+"checksum uhttp_json_api 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d5dea75f9d6cb9b8b04e4d8d44ee220edcf26a7c2b08ed02c933aa05fb41468b"
 "checksum uhttp_media_type 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fe6f9017612fb9272741ef8ba50943b82708b13c9ea38ab5d31fc35427e5043a"
 "checksum uhttp_method 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "56cfb4dfd2f3d866b99f1b7bd41916197557aa560b951f5d469e1a756a186d4c"
 "checksum uhttp_request 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "fae19366cc9626c7d4c27173b7073cc943f3dcfbb5bd8beae3c442a25eab1283"
