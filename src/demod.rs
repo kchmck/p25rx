@@ -64,7 +64,7 @@ impl DemodTask {
         let mut samples = vec![Complex32::zero(); BUF_SAMPLES];
 
         // Used to reduce the number of signal level messages sent.
-        let mut notifier = Throttler::new(16);
+        let mut notifier = Throttler::new(4);
 
         loop {
             let bytes = self.reader.recv().expect("unable to receive sdr samples");
