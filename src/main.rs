@@ -80,7 +80,7 @@ fn main() {
              .value_name("FILE"))
         .arg(Arg::with_name("write")
              .short("w")
-             .help("write baseband samples to FILE")
+             .help("write baseband samples to FILE (f32le/48kHz/mono)")
              .value_name("FILE"))
         .arg(Arg::with_name("freq")
              .short("f")
