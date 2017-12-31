@@ -40,9 +40,7 @@ pub struct DemodTask {
 }
 
 impl DemodTask {
-    /// Create a new `DemodTask` that receives I/Q sample chunks from the first given
-    /// channel, sends events to the second given hub, and sends baseband sample chunks to
-    /// the third given channel.
+    /// Create a new `DemodTask` to communicate on the given channels.
     pub fn new(reader: Receiver<Checkout<Vec<u8>>>,
                hub: mio::channel::Sender<HubEvent>,
                chan: Sender<RecvEvent>)
