@@ -15,6 +15,7 @@ extern crate imbe;
 extern crate libc;
 extern crate map_in_place;
 extern crate mio;
+extern crate moving_avg;
 extern crate num;
 extern crate p25;
 extern crate p25_filts;

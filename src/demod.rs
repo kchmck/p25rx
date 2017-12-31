@@ -7,9 +7,10 @@ use collect_slice::CollectSlice;
 use demod_fm::FmDemod;
 use map_in_place::MapInPlace;
 use mio;
+use moving_avg::MovingAverage;
 use num::complex::Complex32;
 use num::traits::Zero;
-use p25_filts::{DecimFIR, BandpassFIR, DeemphFIR};
+use p25_filts::{DecimFIR, BandpassFIR};
 use pool::{Pool, Checkout};
 use rtlsdr_iq::IQ;
 use static_decimate::{Decimator, DecimationFactor};
@@ -26,8 +27,8 @@ pub struct DemodTask {
     decim: Decimator<Decimate5, DecimFIR>,
     /// Channel-select lowpass filter.
     bandpass: FIRFilter<BandpassFIR>,
-    /// Deemphasis lowpass filter.
-    deemph: FIRFilter<DeemphFIR>,
+    /// Moving average filter.
+    avg: MovingAverage<f32>,
     /// Demodulates FM signal.
     demod: FmDemod,
     /// Channel for receiving I/Q sample chunks.
@@ -50,7 +51,7 @@ impl DemodTask {
         DemodTask {
             decim: Decimator::new(),
             bandpass: FIRFilter::new(),
-            deemph: FIRFilter::new(),
+            avg: MovingAverage::new(10),
             // Assume a 5kHz frequency deviation.
             demod: FmDemod::new(5000, BASEBAND_SAMPLE_RATE),
             reader: reader,
@@ -111,8 +112,8 @@ impl DemodTask {
                    .map(|&s| self.demod.feed(s))
                    .collect_slice(&mut baseband[..]);
 
-            // Apply deemphasis filter.
-            baseband.map_in_place(|&s| self.deemph.feed(s));
+            // Apply averaging filter.
+            baseband.map_in_place(|&s| self.avg.feed(s));
 
             self.chan.send(RecvEvent::Baseband(baseband))
                 .expect("unable to send baseband");
