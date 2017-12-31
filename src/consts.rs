@@ -1,3 +1,5 @@
+//! Constants used throughout the crate.
+
 /// Number of SDR sample byffers to allocate.
 pub const BUF_COUNT: usize = 4;
 /// Size of each SDR sample buffer (bytes).

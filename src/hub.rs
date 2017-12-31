@@ -1,3 +1,5 @@
+//! HTTP REST interface and event streaming.
+
 use std::convert::TryFrom;
 use std::io::{Write, ErrorKind};
 use std::net::SocketAddr;
