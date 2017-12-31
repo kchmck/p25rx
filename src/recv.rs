@@ -12,6 +12,7 @@ use p25::trunking::fields::{self, TalkGroup, ChannelParamsMap, Channel};
 use p25::trunking::tsbk::{TsbkOpcode};
 use p25::voice::crypto::CryptoAlgorithm;
 use pool::Checkout;
+use slice_cast;
 
 use audio::{AudioEvent, AudioOutput};
 use sdr::ControlTaskEvent;
@@ -236,14 +237,7 @@ impl<W: Write> ReplayReceiver<W> {
                 break;
             }
 
-            let samples: &[f32] = unsafe {
-                std::slice::from_raw_parts(
-                    buf.as_ptr() as *const f32,
-                    size / std::mem::size_of::<f32>()
-                )
-            };
-
-            self.feed(samples);
+            self.feed(unsafe { slice_cast::cast(&buf[..]) });
         }
     }
 

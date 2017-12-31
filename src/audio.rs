@@ -2,13 +2,13 @@
 
 use std::io::Write;
 use std::sync::mpsc::Receiver;
-use std;
 
 use imbe::consts::SAMPLES_PER_FRAME;
 use imbe::decode::ImbeDecoder;
 use imbe::frame::ReceivedFrame;
 use map_in_place::MapInPlace;
 use p25::voice::frame::VoiceFrame;
+use slice_cast;
 
 /// Messages for `AudioTask`.
 pub enum AudioEvent {
@@ -82,10 +82,7 @@ impl<W: Write> AudioOutput<W> {
         samples.map_in_place(|&s| s / 8192.0);
 
         self.stream.write_all(unsafe {
-            std::slice::from_raw_parts(
-                samples.as_ptr() as *const u8,
-                samples.len() * std::mem::size_of::<f32>()
-            )
+            slice_cast::cast(&samples[..])
         }).expect("unable to write audio samples");
     }
 

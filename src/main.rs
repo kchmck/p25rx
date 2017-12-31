@@ -24,6 +24,7 @@ extern crate rtlsdr;
 extern crate rtlsdr_iq;
 extern crate serde;
 extern crate serde_json;
+extern crate slice_cast;
 extern crate static_decimate;
 extern crate static_fir;
 extern crate throttle;
@@ -201,11 +202,10 @@ fn main() {
 
             if let Some(mut f) = samples_file {
                 recv.run(|samples| {
+                    // This is safe because it's converting N 32-bit words to 4N 8-bit
+                    // words.
                     f.write_all(unsafe {
-                        std::slice::from_raw_parts(
-                            samples.as_ptr() as *const u8,
-                            samples.len() * std::mem::size_of::<f32>()
-                        )
+                        slice_cast::cast(samples)
                     }).expect("unable to write baseband");
                 })
             } else {
