@@ -78,7 +78,7 @@ impl<W: Write> AudioOutput<W> {
         let mut samples = [0.0; SAMPLES_PER_FRAME];
         self.imbe.decode(frame, &mut samples);
 
-        // TODO: AGC or proper volume normalization.
+        // Reduce volume to a generally sane level.
         samples.map_in_place(|&s| s / 8192.0);
 
         self.stream.write_all(unsafe {
