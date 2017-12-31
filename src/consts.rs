@@ -6,7 +6,7 @@ pub const BUF_BYTES: usize = 32768;
 pub const BUF_SAMPLES: usize = BUF_BYTES / 2;
 
 /// Sample rate for the SDR.
-pub const SDR_SAMPLE_RATE: u32 = 240_000;
+pub const SDR_SAMPLE_RATE: u32 = 240000;
 /// Downconverted baseband sample rate.
 pub const BASEBAND_SAMPLE_RATE: u32 = 48000;
 
