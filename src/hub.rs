@@ -28,8 +28,11 @@ use uhttp_version::HttpVersion;
 use http;
 use recv::RecvEvent;
 
-pub enum Route {
+/// Available routes.
+enum Route {
+    /// Subscribe to SSE stream.
     Subscribe,
+    /// Get/Set control channel frequency.
     CtlFreq,
 }
 
@@ -96,16 +99,25 @@ impl HubToken {
     }
 }
 
+/// Handles HTTP requests and broadcasts events to listening subscribers.
 pub struct HubTask {
+    /// Tracks pertinent state of other tasks.
     state: State,
+    /// Main socket for HTTP connections.
     socket: TcpListener,
+    /// Async event loop.
     events: Poll,
+    /// Streams subscribed to receive events.
     streamers: ArrayVec<[TcpStream; 4]>,
+    /// Channel for receiving events.
     chan: Receiver<HubEvent>,
+    /// Channel for communication with RecvTask.
     recv: Sender<RecvEvent>,
 }
 
 impl HubTask {
+    /// Create a new `HubTask` to communicate on the given channels and bind to the given
+    /// socket address.
     pub fn new(chan: Receiver<HubEvent>, recv: Sender<RecvEvent>, addr: &SocketAddr)
         -> std::io::Result<Self>
     {
@@ -127,6 +139,7 @@ impl HubTask {
         })
     }
 
+    /// Start handling HTTP requests and events, blocking the current thread.
     pub fn run(&mut self) {
         let mut events = Events::with_capacity(32);
 
@@ -135,12 +148,13 @@ impl HubTask {
                 .expect("unable to poll events");
 
             for event in events.iter() {
-                self.handle_event(event);
+                self.handle_poll(event);
             }
         }
     }
 
-    fn handle_event(&mut self, e: Event) {
+    /// Handle the given event.
+    fn handle_poll(&mut self, e: Event) {
         match e.token().into() {
             HubToken::Conns =>
                 self.handle_conns().expect("unable to handle connection"),
@@ -157,6 +171,7 @@ impl HubTask {
         }
     }
 
+    /// Handle pending HTTP connections.
     fn handle_conns(&mut self) -> Result<(), ()> {
         loop {
             let (stream, _) = match self.socket.accept() {
@@ -177,21 +192,24 @@ impl HubTask {
         }
     }
 
+    /// Handle pending channel events.
     fn handle_chan(&mut self) -> Result<(), ()> {
         loop {
             match self.chan.try_recv() {
-                Ok(msg) => self.handle_message(msg),
+                Ok(e) => self.handle_event(e),
                 Err(TryRecvError::Disconnected) => return Err(()),
                 Err(TryRecvError::Empty) => return Ok(()),
             }
         }
     }
 
-    fn handle_message(&mut self, msg: HubEvent) {
-        if let HubEvent::State(sm) = msg {
+    /// Handle the given channel event.
+    fn handle_event(&mut self, e: HubEvent) {
+        if let HubEvent::State(sm) = e {
             self.state.update(sm);
         }
 
+        // Holds streamers that are still alive.
         let mut keep = ArrayVec::<[TcpStream; 4]>::new();
 
         loop {
@@ -200,7 +218,7 @@ impl HubTask {
                 None => break,
             };
 
-            if let Ok(()) = self.stream_event(&mut s, &msg) {
+            if let Ok(()) = self.stream_event(&mut s, &e) {
                 keep.push(s);
             }
         }
@@ -208,6 +226,7 @@ impl HubTask {
         self.streamers = keep;
     }
 
+    /// Handle the given HTTP connection.
     fn handle_stream(&mut self, mut s: TcpStream) {
         match self.handle_request(&mut s) {
             Ok(()) => {},
@@ -228,6 +247,7 @@ impl HubTask {
         match (method, route) {
             (Method::Get, Route::Subscribe) => {
                 if let Ok(mut s) = req.into_stream().try_clone() {
+                    // Check if streamer can be supported before sending response.
                     if self.streamers.is_full() {
                         return Err(StatusCode::TooManyRequests);
                     }
@@ -254,8 +274,9 @@ impl HubTask {
 
                 // TODO: verify frequency range.
 
-                try!(self.recv.send(RecvEvent::SetControlFreq(msg.ctlfreq))
-                    .map_err(|_| StatusCode::InternalServerError));
+                if self.recv.send(RecvEvent::SetControlFreq(msg.ctlfreq)).is_err() {
+                    return Err(StatusCode::InternalServerError);
+                }
 
                 http::send_status(req.into_stream(), StatusCode::Ok).is_ok();
 
@@ -274,6 +295,7 @@ impl HubTask {
         }
     }
 
+    /// Send the initial streaming header to the given subscriber.
     fn start_stream(&self, s: &mut TcpStream) -> std::io::Result<()> {
         let mut h = HeaderLines::new(s);
 
@@ -352,24 +374,37 @@ impl HubTask {
     }
 }
 
+/// Events for the hub.
 #[derive(Clone)]
 pub enum HubEvent {
+    /// Some state update.
     State(StateEvent),
+    /// Center frequency was changed.
     UpdateCurFreq(u32),
+    /// Current talkgroup has changed.
     UpdateTalkGroup(TalkGroup),
+    /// Power of received signal.
     UpdateSignalPower(f32),
+    /// Trunking control packet was received.
     TrunkingControl(TsbkFields),
+    /// Link control packet was received.
     LinkControl(LinkControlFields),
 }
 
+/// State update events.
 #[derive(Copy, Clone)]
 pub enum StateEvent {
+    /// Control channel frequency has been committed.
     UpdateCtlFreq(u32),
+    /// Channel parameters have been modified.
     UpdateChannelParams(TsbkFields),
 }
 
+/// Holds a copy of certain state held in other tasks.
 pub struct State {
+    /// Current control channel frequency.
     ctlfreq: u32,
+    /// Channel parameters for current site.
     channels: ChannelParamsMap,
 }
 
@@ -383,6 +418,7 @@ impl Default for State {
 }
 
 impl State {
+    /// Update the state based on the given event.
     fn update(&mut self, e: StateEvent) {
         use self::StateEvent::*;
 
