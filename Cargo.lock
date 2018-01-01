@@ -305,10 +305,10 @@ dependencies = [
 [[package]]
 name = "p25_filts"
 version = "1.0.0"
-source = "git+https://github.com/kchmck/p25_filts.rs#f5eb655dd1c9baf9efe36e26f9fe01598f7e4167"
+source = "git+https://github.com/kchmck/p25_filts.rs#0d34fc28b57aa3ce9c2131bfc1234fc08cf4d01e"
 dependencies = [
  "num 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
- "static_fir 1.0.0 (git+https://github.com/kchmck/static_fir.rs)",
+ "static_fir 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -341,7 +341,7 @@ dependencies = [
  "serde_json 0.9.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "slice-cast 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "static_decimate 1.0.0 (git+https://github.com/kchmck/static_decimate.rs)",
- "static_fir 1.0.0 (git+https://github.com/kchmck/static_fir.rs)",
+ "static_fir 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "throttle 1.0.0 (git+https://github.com/kchmck/throttle.rs)",
  "uhttp_chunked_write 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "uhttp_json_api 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -481,16 +481,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "static_decimate"
 version = "1.0.0"
-source = "git+https://github.com/kchmck/static_decimate.rs#f60edca452217a8669ba265cd72372f34b05de7b"
+source = "git+https://github.com/kchmck/static_decimate.rs#ca416e838c7dd2c620abbf8a6d56a7ca105d0660"
 dependencies = [
  "num 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
- "static_fir 1.0.0 (git+https://github.com/kchmck/static_fir.rs)",
+ "static_fir 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "static_ewma"
 version = "1.0.0"
 source = "git+https://github.com/kchmck/static_ewma.rs#c236980f9308ecd8c8d53c73c89a4d77e3ead379"
+
+[[package]]
+name = "static_fir"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "static_fir"
@@ -754,6 +759,7 @@ dependencies = [
 "checksum slice-cast 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "ce1f91576fca3c2380ff517b741a0e637c83ae9448283b4db029ffec201be988"
 "checksum static_decimate 1.0.0 (git+https://github.com/kchmck/static_decimate.rs)" = "<none>"
 "checksum static_ewma 1.0.0 (git+https://github.com/kchmck/static_ewma.rs)" = "<none>"
+"checksum static_fir 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "65b8741dc43d307b01659f424d3c11376773096c3fa96aecbc3bf38dae6b0fc8"
 "checksum static_fir 1.0.0 (git+https://github.com/kchmck/static_fir.rs)" = "<none>"
 "checksum strsim 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b4d15c810519a91cf877e7e36e63fe068815c678181439f2f29e2562147c3694"
 "checksum subslice_index 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d3a3b5568149c755397b365f81b2c1a384e445bd3b6384e2231b318d5e399688"

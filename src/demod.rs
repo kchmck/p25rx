@@ -10,11 +10,11 @@ use mio;
 use moving_avg::MovingAverage;
 use num::complex::Complex32;
 use num::traits::Zero;
-use p25_filts::{DecimFIR, BandpassFIR};
+use p25_filts::{DecimFir, BandpassFir};
 use pool::{Pool, Checkout};
 use rtlsdr_iq::IQ;
 use static_decimate::{Decimator, DecimationFactor};
-use static_fir::FIRFilter;
+use static_fir::FirFilter;
 use throttle::Throttler;
 
 use hub::HubEvent;
@@ -24,9 +24,9 @@ use consts::{BUF_SAMPLES, BASEBAND_SAMPLE_RATE};
 /// Demodulates raw I/Q signal to C4FM baseband.
 pub struct DemodTask {
     /// Decimates I/Q signal.
-    decim: Decimator<Decimate5, DecimFIR>,
+    decim: Decimator<Decimate5, DecimFir>,
     /// Channel-select lowpass filter.
-    bandpass: FIRFilter<BandpassFIR>,
+    bandpass: FirFilter<BandpassFir>,
     /// Moving average filter.
     avg: MovingAverage<f32>,
     /// Demodulates FM signal.
@@ -48,7 +48,7 @@ impl DemodTask {
     {
         DemodTask {
             decim: Decimator::new(),
-            bandpass: FIRFilter::new(),
+            bandpass: FirFilter::new(),
             avg: MovingAverage::new(10),
             // Assume a 5kHz frequency deviation.
             demod: FmDemod::new(5000, BASEBAND_SAMPLE_RATE),
