@@ -13,7 +13,7 @@ use num::traits::Zero;
 use p25_filts::{DecimFir, BandpassFir};
 use pool::{Pool, Checkout};
 use rtlsdr_iq::IQ;
-use static_decimate::{Decimator, DecimationFactor};
+use static_decimate::Decimator;
 use static_fir::FirFilter;
 use throttle::Throttler;
 
@@ -24,7 +24,7 @@ use consts::{BUF_SAMPLES, BASEBAND_SAMPLE_RATE};
 /// Demodulates raw I/Q signal to C4FM baseband.
 pub struct DemodTask {
     /// Decimates I/Q signal.
-    decim: Decimator<Decimate5, DecimFir>,
+    decim: Decimator<DecimFir>,
     /// Channel-select lowpass filter.
     bandpass: FirFilter<BandpassFir>,
     /// Moving average filter.
@@ -47,7 +47,7 @@ impl DemodTask {
         -> Self
     {
         DemodTask {
-            decim: Decimator::new(),
+            decim: Decimator::new(5),
             bandpass: FirFilter::new(),
             avg: MovingAverage::new(10),
             // Assume a 5kHz frequency deviation.
@@ -117,13 +117,6 @@ impl DemodTask {
                 .expect("unable to send baseband");
         }
     }
-}
-
-/// Decimates from 240kHz to 48kHz.
-struct Decimate5;
-
-impl DecimationFactor for Decimate5 {
-    fn factor() -> u32 { 5 }
 }
 
 /// Calculate the power (dBm) into the resistance (ohms) of the given samples.

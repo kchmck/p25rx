@@ -481,7 +481,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "static_decimate"
 version = "1.0.0"
-source = "git+https://github.com/kchmck/static_decimate.rs#ca416e838c7dd2c620abbf8a6d56a7ca105d0660"
+source = "git+https://github.com/kchmck/static_decimate.rs#e9e00a0e4daf18fb262fa8496b81bca5c7c2ec6d"
 dependencies = [
  "num 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "static_fir 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
