@@ -88,6 +88,7 @@ impl<W: Write> AudioOutput<W> {
 
     /// Flush the wrapped stream.
     pub fn flush(&mut self) {
+        self.stream.write(&[0; 8000]).unwrap();
         self.stream.flush().expect("unable to flush audio samples")
     }
 }
