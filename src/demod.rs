@@ -5,7 +5,7 @@ use std;
 
 use collect_slice::CollectSlice;
 use demod_fm::FmDemod;
-use map_in_place::MapInPlace;
+use slice_mip::MapInPlace;
 use mio;
 use moving_avg::MovingAverage;
 use num::complex::Complex32;

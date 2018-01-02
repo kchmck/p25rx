@@ -6,7 +6,7 @@ use std::sync::mpsc::Receiver;
 use imbe::consts::SAMPLES_PER_FRAME;
 use imbe::decode::ImbeDecoder;
 use imbe::frame::ReceivedFrame;
-use map_in_place::MapInPlace;
+use slice_mip::MapInPlace;
 use p25::voice::frame::VoiceFrame;
 use slice_cast;
 

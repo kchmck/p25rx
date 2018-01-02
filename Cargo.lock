@@ -325,7 +325,6 @@ dependencies = [
  "fnv 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "imbe 1.0.0 (git+https://github.com/kchmck/imbe.rs)",
  "libc 0.2.20 (registry+https://github.com/rust-lang/crates.io-index)",
- "map_in_place 1.0.0 (git+https://github.com/kchmck/map_in_place.rs)",
  "mio 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "moving_avg 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -340,6 +339,7 @@ dependencies = [
  "serde_derive 0.9.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 0.9.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "slice-cast 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "slice_mip 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "static_decimate 1.0.0 (git+https://github.com/kchmck/static_decimate.rs)",
  "static_fir 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "throttle 1.0.0 (git+https://github.com/kchmck/throttle.rs)",
@@ -476,6 +476,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "slice-cast"
 version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "slice_mip"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -757,6 +762,7 @@ dependencies = [
 "checksum serde_json 0.9.7 (registry+https://github.com/rust-lang/crates.io-index)" = "2eb96d30e4e6f9fc52e08f51176d078b6f79b981dc3ed4134f7b850be9f446a8"
 "checksum slab 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "17b4fcaed89ab08ef143da37bc52adbcc04d4a69014f4c1208d6b51f0c47bc23"
 "checksum slice-cast 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "ce1f91576fca3c2380ff517b741a0e637c83ae9448283b4db029ffec201be988"
+"checksum slice_mip 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1f2a6116c69cb600b42de3cdd836466e24a7d75229cc3fba5eb0da898bca5592"
 "checksum static_decimate 1.0.0 (git+https://github.com/kchmck/static_decimate.rs)" = "<none>"
 "checksum static_ewma 1.0.0 (git+https://github.com/kchmck/static_ewma.rs)" = "<none>"
 "checksum static_fir 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "65b8741dc43d307b01659f424d3c11376773096c3fa96aecbc3bf38dae6b0fc8"
