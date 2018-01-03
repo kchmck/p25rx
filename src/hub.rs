@@ -2,21 +2,21 @@
 
 use std::convert::TryFrom;
 use std::io::{Write, ErrorKind};
-use std::net::SocketAddr;
+use std::net::{SocketAddr, TcpStream};
 use std::os::unix::io::{RawFd, FromRawFd, IntoRawFd};
 use std::sync::mpsc::{Sender, TryRecvError};
 use std;
 
 use arrayvec::ArrayVec;
 use mio::channel::{Receiver};
-use mio::tcp::{TcpListener, TcpStream};
-use mio::unix::EventedFd;
 use mio::{Poll, PollOpt, Token, Event, Events, Ready};
+use mio::tcp::TcpListener;
+use mio::unix::EventedFd;
 use p25::trunking::fields::{self, TalkGroup, ChannelParamsMap};
 use p25::trunking::tsbk::{TsbkFields, TsbkOpcode};
 use p25::voice::control::{self, LinkControlFields, LinkControlOpcode};
-use serde::Serialize;
 use serde_json;
+use serde::Serialize;
 use uhttp_json_api::{HttpRequest, HttpResult};
 use uhttp_method::Method;
 use uhttp_response_header::HeaderLines;
@@ -163,7 +163,7 @@ impl HubTask {
             HubToken::Request(fd) => {
                 let stream = unsafe { TcpStream::from_raw_fd(fd.into()) };
 
-                self.events.deregister(&stream)
+                self.events.deregister(&EventedFd(&fd))
                     .expect("unable to deregister stream");
 
                 self.handle_stream(stream);
@@ -174,7 +174,7 @@ impl HubTask {
     /// Handle pending HTTP connections.
     fn handle_conns(&mut self) -> Result<(), ()> {
         loop {
-            let (stream, _) = match self.socket.accept() {
+            let (stream, _) = match self.socket.accept_std() {
                 Ok(x) => x,
                 Err(e) => return if e.kind() == ErrorKind::WouldBlock {
                     Ok(())
