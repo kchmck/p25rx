@@ -58,6 +58,9 @@ const REQUEST: usize = 1 << 29;
 /// safe assumption (http://unix.stackexchange.com/questions/84227).
 const FD_MASK: RawFd = (1 << 24) - 1;
 
+/// Masks off token tag.
+const TAG_MASK: usize = !(FD_MASK as usize);
+
 /// Async event types.
 ///
 /// The complications around packing this type into 32-bit `Token`s is to support
@@ -83,10 +86,10 @@ impl From<HubToken> for Token {
 
 impl From<Token> for HubToken {
     fn from(tok: Token) -> Self {
-        match tok.0 {
+        match tok.0 & TAG_MASK {
             CONNS => HubToken::Conns,
             EVENTS => HubToken::Events,
-            b if b & REQUEST != 0 => HubToken::Request(b as RawFd & FD_MASK),
+            REQUEST => HubToken::Request(tok.0 as RawFd & FD_MASK),
             _ => panic!("unknown token"),
         }
     }
