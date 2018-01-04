@@ -73,6 +73,7 @@ impl RecvTask {
         }
 
         self.ctlfreq = freq;
+
         self.hub.send(HubEvent::State(StateEvent::UpdateCtlFreq(freq)))
             .expect("unable to send control frequency");
         self.switch_control();
