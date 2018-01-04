@@ -8,6 +8,7 @@ use fnv::FnvHasher;
 use mio;
 use p25::message::nid::DataUnit;
 use p25::message::receiver::MessageReceiver;
+use p25::stats::Stats;
 use p25::trunking::fields::{self, TalkGroup, ChannelParamsMap, Channel};
 use p25::trunking::tsbk::{TsbkOpcode};
 use p25::voice::crypto::CryptoAlgorithm;
@@ -35,6 +36,7 @@ pub struct RecvTask {
     hub: mio::channel::Sender<HubEvent>,
     sdr: Sender<ControlTaskEvent>,
     audio: Sender<AudioEvent>,
+    stats: Stats,
 }
 
 impl RecvTask {
@@ -58,6 +60,7 @@ impl RecvTask {
             hub: hub,
             sdr: sdr,
             audio: audio,
+            stats: Stats::default(),
         }.init(freq)
     }
 
@@ -122,8 +125,10 @@ impl RecvTask {
             None => return,
         };
 
+        self.stats.merge(&mut self.msg);
+
         match event {
-            Error(_) => {},
+            Error(e) => self.stats.record_err(e),
             PacketNID(nid) => {
                 match nid.data_unit {
                     DataUnit::VoiceLCTerminator | DataUnit::VoiceSimpleTerminator =>
