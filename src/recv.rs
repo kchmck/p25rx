@@ -27,6 +27,7 @@ pub struct RecvTask {
     ctlfreq: u32,
     curfreq: u32,
     msg: MessageReceiver,
+    hopping: bool,
     channels: ChannelParamsMap,
     curgroup: TalkGroup,
     encrypted: HashSet<u16, BuildHasherDefault<FnvHasher>>,
@@ -41,13 +42,15 @@ impl RecvTask {
                events: Receiver<RecvEvent>,
                hub: mio::channel::Sender<HubEvent>,
                sdr: Sender<ControlTaskEvent>,
-               audio: Sender<AudioEvent>)
+               audio: Sender<AudioEvent>,
+               hopping: bool)
         -> Self
     {
         RecvTask {
             ctlfreq: std::u32::MAX,
             curfreq: std::u32::MAX,
             msg: MessageReceiver::new(),
+            hopping: hopping,
             channels: ChannelParamsMap::default(),
             curgroup: TalkGroup::Default,
             encrypted: HashSet::default(),
@@ -206,7 +209,10 @@ impl RecvTask {
 
         self.curgroup = tg;
 
-        self.set_freq(freq);
+        if self.hopping {
+            self.set_freq(freq);
+        }
+
         self.hub.send(HubEvent::UpdateTalkGroup(tg))
             .expect("unable to send talkgroup");
 
