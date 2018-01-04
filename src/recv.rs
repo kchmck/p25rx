@@ -67,6 +67,11 @@ impl RecvTask {
     }
 
     fn set_control_freq(&mut self, freq: u32) {
+        // Reinitialize channel parameters if moving to a different channel.
+        if freq != self.ctlfreq {
+            self.channels = ChannelParamsMap::default();
+        }
+
         self.ctlfreq = freq;
         self.hub.send(HubEvent::State(StateEvent::UpdateCtlFreq(freq)))
             .expect("unable to send control frequency");
