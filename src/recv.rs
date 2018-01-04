@@ -234,6 +234,7 @@ impl RecvTask {
 pub struct ReplayReceiver<W: Write> {
     audio: AudioOutput<W>,
     msg: MessageReceiver,
+    stats: Stats,
 }
 
 impl<W: Write> ReplayReceiver<W> {
@@ -241,6 +242,7 @@ impl<W: Write> ReplayReceiver<W> {
         ReplayReceiver {
             audio: audio,
             msg: MessageReceiver::new(),
+            stats: Stats::default(),
         }
     }
 
@@ -267,7 +269,10 @@ impl<W: Write> ReplayReceiver<W> {
                 None => continue,
             };
 
+            self.stats.merge(&mut self.msg);
+
             match event {
+                Error(e) => self.stats.record_err(e),
                 VoiceFrame(vf) => self.audio.play(&vf),
                 _ => {},
             }
