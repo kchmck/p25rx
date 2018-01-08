@@ -54,6 +54,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cai_golay"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "binfield_matrix 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "cfg-if"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -365,10 +373,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "p25"
 version = "1.0.0"
-source = "git+https://github.com/kchmck/p25.rs#1c893b90626107dfb078c2e928d247e9f7d2aa1a"
+source = "git+https://github.com/kchmck/p25.rs#fc36f2ed34154bbe6566f46b4b5987f3eda2b854"
 dependencies = [
  "binfield_matrix 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cai_cyclic 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cai_golay 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "collect_slice 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "moving_avg 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.41 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -794,6 +803,7 @@ dependencies = [
 "checksum bitflags 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4efd02e230a02e18f92fc2735f44597385ed02ad8f831e7c1c1156ee5e1ab3a5"
 "checksum bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b3c30d3802dfb7281680d6285f2ccdaa8c2d8fee41f93805dba5c4cf50dc23cf"
 "checksum cai_cyclic 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "929849d182958c39c95dbd93c6de4e56242dd9e543edcd7f8bb21c87cf9088d7"
+"checksum cai_golay 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2c8926c8c0b1111304cdb7b76a7239639b7df35280a66886d7377acdf360466c"
 "checksum cfg-if 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "d4c819a1287eb618df47cc647173c5c4c66ba19d888a6e50d605672aed3140de"
 "checksum chan 0.1.19 (registry+https://github.com/rust-lang/crates.io-index)" = "f93bfe971116428a9066c1c3c69a09ae3ef69432f8418be28ab50f96783e6a50"
 "checksum chrono 0.2.25 (registry+https://github.com/rust-lang/crates.io-index)" = "9213f7cd7c27e95c2b57c49f0e69b1ea65b27138da84a170133fd21b07659c00"
