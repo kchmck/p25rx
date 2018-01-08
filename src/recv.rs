@@ -11,6 +11,7 @@ use p25::message::receiver::MessageReceiver;
 use p25::stats::Stats;
 use p25::trunking::fields::{self, TalkGroup, ChannelParamsMap, Channel};
 use p25::trunking::tsbk::{TsbkOpcode};
+use p25::voice::control::{self, LinkControlFields};
 use p25::voice::crypto::CryptoAlgorithm;
 use pool::Checkout;
 use slice_cast;
@@ -137,15 +138,7 @@ impl RecvTask {
                 }
             },
             VoiceHeader(head) => self.handle_crypto(head.crypto_alg()),
-            LinkControl(lc) => {
-                let _ = match lc.opcode() {
-                    Some(o) => o,
-                    None => return,
-                };
-
-                self.hub.send(HubEvent::LinkControl(lc))
-                    .expect("unable to send link control");
-            },
+            LinkControl(lc) => self.handle_lc(lc),
             CryptoControl(cc) => self.handle_crypto(cc.alg()),
             LowSpeedDataFragment(_) => {},
             VoiceFrame(vf) => {
@@ -189,8 +182,34 @@ impl RecvTask {
                     },
                     _ => {},
                 }
-            }
-            VoiceTerm(_) => {},
+            },
+            VoiceTerm(lc) => self.handle_lc(lc),
+        }
+    }
+
+    fn handle_lc(&mut self, lc: LinkControlFields) {
+        use p25::voice::control::LinkControlOpcode;
+
+        let opcode = match lc.opcode() {
+            Some(o) => o,
+            None => return,
+        };
+
+        self.hub.send(HubEvent::LinkControl(lc))
+            .expect("unable to send link control");
+
+        match opcode {
+            LinkControlOpcode::CallTermination => {
+                // TODO: record that this conversation is complete
+            },
+            LinkControlOpcode::GroupVoiceUpdate => {
+                let updates = fields::GroupTrafficUpdate::new(lc.payload()).updates();
+
+                for (ch, tg) in updates.iter().cloned() {
+                    // TODO: add talkgroups to list of candidates.
+                }
+            },
+            _ => {},
         }
     }
 
