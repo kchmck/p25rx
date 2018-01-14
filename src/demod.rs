@@ -6,7 +6,7 @@ use std;
 use collect_slice::CollectSlice;
 use demod_fm::FmDemod;
 use slice_mip::MapInPlace;
-use mio;
+use mio_more;
 use moving_avg::MovingAverage;
 use num::complex::Complex32;
 use num::traits::Zero;
@@ -34,7 +34,7 @@ pub struct DemodTask {
     /// Channel for receiving I/Q sample chunks.
     reader: Receiver<Checkout<Vec<u8>>>,
     /// Channel for the hub.
-    hub: mio::channel::Sender<HubEvent>,
+    hub: mio_more::channel::Sender<HubEvent>,
     /// Channel for sending baseband sample chunks.
     chan: Sender<RecvEvent>,
 }
@@ -42,7 +42,7 @@ pub struct DemodTask {
 impl DemodTask {
     /// Create a new `DemodTask` to communicate on the given channels.
     pub fn new(reader: Receiver<Checkout<Vec<u8>>>,
-               hub: mio::channel::Sender<HubEvent>,
+               hub: mio_more::channel::Sender<HubEvent>,
                chan: Sender<RecvEvent>)
         -> Self
     {

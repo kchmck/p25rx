@@ -8,7 +8,7 @@ use std::sync::mpsc::{Sender, TryRecvError};
 use std;
 
 use arrayvec::ArrayVec;
-use mio::channel::{Receiver};
+use mio_more::channel::Receiver;
 use mio::{Poll, PollOpt, Token, Event, Events, Ready};
 use mio::tcp::TcpListener;
 use mio::unix::EventedFd;

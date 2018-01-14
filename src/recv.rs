@@ -5,7 +5,7 @@ use std::sync::mpsc::{Sender, Receiver};
 use std;
 
 use fnv::FnvHasher;
-use mio;
+use mio_more;
 use p25::message::nid::DataUnit;
 use p25::message::receiver::MessageReceiver;
 use p25::stats::Stats;
@@ -34,7 +34,7 @@ pub struct RecvTask {
     curgroup: TalkGroup,
     encrypted: HashSet<u16, BuildHasherDefault<FnvHasher>>,
     events: Receiver<RecvEvent>,
-    hub: mio::channel::Sender<HubEvent>,
+    hub: mio_more::channel::Sender<HubEvent>,
     sdr: Sender<ControlTaskEvent>,
     audio: Sender<AudioEvent>,
     stats: Stats,
@@ -43,7 +43,7 @@ pub struct RecvTask {
 impl RecvTask {
     pub fn new(freq: u32,
                events: Receiver<RecvEvent>,
-               hub: mio::channel::Sender<HubEvent>,
+               hub: mio_more::channel::Sender<HubEvent>,
                sdr: Sender<ControlTaskEvent>,
                audio: Sender<AudioEvent>,
                hopping: bool)

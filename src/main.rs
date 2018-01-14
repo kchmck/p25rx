@@ -14,6 +14,7 @@ extern crate fnv;
 extern crate imbe;
 extern crate libc;
 extern crate mio;
+extern crate mio_more;
 extern crate moving_avg;
 extern crate num;
 extern crate p25;
@@ -172,7 +173,7 @@ fn main() {
     let (tx_recv, rx_recv) = channel();
     let (tx_read, rx_read) = channel();
     let (tx_audio, rx_audio) = channel();
-    let (tx_hub, rx_hub) = mio::channel::channel();
+    let (tx_hub, rx_hub) = mio_more::channel::channel();
 
     let mut hub = HubTask::new(rx_hub, tx_recv.clone(), &addr)
         .expect("unable to start hub");
