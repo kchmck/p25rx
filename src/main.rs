@@ -21,7 +21,7 @@ extern crate p25;
 extern crate p25_filts;
 extern crate pool;
 extern crate prctl;
-extern crate rtlsdr;
+extern crate rtlsdr_mt;
 extern crate rtlsdr_iq;
 extern crate serde;
 extern crate serde_json;
@@ -44,7 +44,7 @@ use std::io::{BufWriter, Write};
 use std::sync::mpsc::channel;
 
 use clap::{Arg, App};
-use rtlsdr::TunerGains;
+use rtlsdr_mt::TunerGains;
 
 mod audio;
 mod consts;
@@ -130,7 +130,7 @@ fn main() {
 
     let dev: u32 = match args.value_of("device").unwrap() {
         "list" => {
-            for (idx, name) in rtlsdr::devices().enumerate() {
+            for (idx, name) in rtlsdr_mt::devices().enumerate() {
                 println!("{}: {}", idx, name.to_str().unwrap());
             }
 
@@ -139,7 +139,7 @@ fn main() {
         s => s.parse().expect("invalid device index"),
     };
 
-    let (mut control, reader) = rtlsdr::open(dev)
+    let (mut control, reader) = rtlsdr_mt::open(dev)
         .expect("unable to open rtlsdr");
 
     match args.value_of("gain").expect("-g option is required") {

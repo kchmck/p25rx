@@ -434,8 +434,8 @@ dependencies = [
  "pool 0.1.4 (git+https://github.com/kchmck/pool)",
  "prctl 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
- "rtlsdr 2.0.0 (git+https://github.com/kchmck/rtlsdr.rs)",
  "rtlsdr_iq 1.0.0 (git+https://github.com/kchmck/rtlsdr_iq.rs)",
+ "rtlsdr_mt 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 0.9.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 0.9.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 0.9.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -501,15 +501,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rtlsdr"
-version = "2.0.0"
-source = "git+https://github.com/kchmck/rtlsdr.rs#586bd9de09702370b40750f82bbf67d3722ea793"
-dependencies = [
- "libc 0.2.34 (registry+https://github.com/rust-lang/crates.io-index)",
- "rtlsdr_sys 1.1.1 (git+https://github.com/kchmck/rtlsdr_sys.rs)",
-]
-
-[[package]]
 name = "rtlsdr_iq"
 version = "1.0.0"
 source = "git+https://github.com/kchmck/rtlsdr_iq.rs#c469b3c02ac5db12da08b1ab9f45d13bc545bcc1"
@@ -518,9 +509,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "rtlsdr_mt"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.2.34 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rtlsdr_sys 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "rtlsdr_sys"
 version = "1.1.1"
-source = "git+https://github.com/kchmck/rtlsdr_sys.rs#85ff33aa4ac3068f739d998607257a095ce5113b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.2.34 (registry+https://github.com/rust-lang/crates.io-index)",
  "pkg-config 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -869,9 +869,9 @@ dependencies = [
 "checksum rand 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)" = "9e7944d95d25ace8f377da3ac7068ce517e4c646754c43a1b1849177bbf72e59"
 "checksum redox_syscall 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)" = "07b8f011e3254d5a9b318fde596d409a0001c9ae4c6e7907520c2eaa4d988c99"
 "checksum redox_termios 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7e891cfe48e9100a70a3b6eb652fef28920c117d366339687bd5576160db0f76"
-"checksum rtlsdr 2.0.0 (git+https://github.com/kchmck/rtlsdr.rs)" = "<none>"
 "checksum rtlsdr_iq 1.0.0 (git+https://github.com/kchmck/rtlsdr_iq.rs)" = "<none>"
-"checksum rtlsdr_sys 1.1.1 (git+https://github.com/kchmck/rtlsdr_sys.rs)" = "<none>"
+"checksum rtlsdr_mt 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "32d04498b535e7e37c5f3c21683e81a48c5d7cdd479e36efe6ffef45ac797d81"
+"checksum rtlsdr_sys 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "6fea7311833f1b7d05bbc60ce886556f925be9fdfd3501b9264ab490ab59f193"
 "checksum rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)" = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
 "checksum serde 0.9.15 (registry+https://github.com/rust-lang/crates.io-index)" = "34b623917345a631dc9608d5194cc206b3fe6c3554cd1c75b937e55e285254af"
 "checksum serde_codegen_internals 0.14.2 (registry+https://github.com/rust-lang/crates.io-index)" = "bc888bd283bd2420b16ad0d860e35ad8acb21941180a83a189bb2046f9d00400"

@@ -3,7 +3,7 @@
 use std::sync::mpsc::{Sender, Receiver};
 
 use pool::{Pool, Checkout};
-use rtlsdr::{Controller, Reader};
+use rtlsdr_mt::{Controller, Reader};
 
 use consts::{BUF_BYTES, BUF_COUNT};
 

@@ -21,6 +21,7 @@ moving_avg = "0.1.0"
 num = "0.1.34"
 prctl = "1.0.0"
 rand = "0.3.13"
+rtlsdr_mt = "2.0.0"
 serde = "0.9"
 serde_derive = "0.9"
 serde_json = "0.9"
@@ -40,7 +41,6 @@ imbe = {version = "1.0.0", git = "https://github.com/kchmck/imbe.rs"}
 p25 = {version = "1.0.0", git = "https://github.com/kchmck/p25.rs", features = ["ser"]}
 p25_filts = {version = "1.0.0", git = "https://github.com/kchmck/p25_filts.rs"}
 pool = {version = "0.1.3", git = "https://github.com/kchmck/pool"}
-rtlsdr = {version = "2.0.0", git = "https://github.com/kchmck/rtlsdr.rs"}
 rtlsdr_iq = {version = "1.0.0", git = "https://github.com/kchmck/rtlsdr_iq.rs"}
 static_decimate = {version = "1.0.0", git = "https://github.com/kchmck/static_decimate.rs"}
 throttle = {version = "1.0.0", git = "https://github.com/kchmck/throttle.rs"}
