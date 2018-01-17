@@ -80,7 +80,7 @@ impl DemodTask {
 
             // Transform interleaved byte pairs to complex floating point samples.
             pairs.iter()
-                 .map(|&s| unsafe { *IQ.get_unchecked(s as usize) })
+                 .map(|&s| IQ[s])
                  .collect_slice(&mut samples[..]);
 
             // Decimate from SDR to baseband sample rate.
