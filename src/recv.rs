@@ -100,7 +100,7 @@ impl RecvTask {
         self.sdr.send(ControlTaskEvent::SetFreq(freq))
             .expect("unable to set freq in sdr");
 
-        self.msg.recv.resync();
+        self.msg.resync();
     }
 
     pub fn run<F: FnMut(&[f32])>(&mut self, mut cb: F) {
