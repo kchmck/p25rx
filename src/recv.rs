@@ -1,24 +1,24 @@
-use std::collections::HashSet;
-use std::hash::BuildHasherDefault;
+//! Receiver logic.
+
 use std::io::{Read, Write};
 use std::sync::mpsc::{Sender, Receiver};
 use std;
 
-use fnv::FnvHasher;
 use mio_more;
-use p25::message::nid::DataUnit;
 use p25::message::receiver::MessageReceiver;
 use p25::stats::Stats;
 use p25::trunking::fields::{self, TalkGroup, ChannelParamsMap, Channel};
-use p25::trunking::tsbk::{TsbkOpcode};
-use p25::voice::control::{self, LinkControlFields};
+use p25::trunking::tsbk::{self, TsbkOpcode};
+use p25::voice::control::LinkControlFields;
 use p25::voice::crypto::CryptoAlgorithm;
 use pool::Checkout;
 use slice_cast;
 
 use audio::{AudioEvent, AudioOutput};
-use sdr::ControlTaskEvent;
 use hub::{HubEvent, StateEvent};
+use policy::{ReceiverPolicy, PolicyEvent};
+use sdr::ControlTaskEvent;
+use talkgroups::TalkgroupSelection;
 
 pub enum RecvEvent {
     Baseband(Checkout<Vec<f32>>),
@@ -30,9 +30,10 @@ pub struct RecvTask {
     curfreq: u32,
     msg: MessageReceiver,
     hopping: bool,
+    policy: ReceiverPolicy,
+    talkgroups: TalkgroupSelection,
     channels: ChannelParamsMap,
     curgroup: TalkGroup,
-    encrypted: HashSet<u16, BuildHasherDefault<FnvHasher>>,
     events: Receiver<RecvEvent>,
     hub: mio_more::channel::Sender<HubEvent>,
     sdr: Sender<ControlTaskEvent>,
@@ -46,7 +47,9 @@ impl RecvTask {
                hub: mio_more::channel::Sender<HubEvent>,
                sdr: Sender<ControlTaskEvent>,
                audio: Sender<AudioEvent>,
-               hopping: bool)
+               hopping: bool,
+               policy: ReceiverPolicy,
+               talkgroups: TalkgroupSelection)
         -> Self
     {
         RecvTask {
@@ -54,9 +57,10 @@ impl RecvTask {
             curfreq: std::u32::MAX,
             msg: MessageReceiver::new(),
             hopping: hopping,
+            policy: policy,
+            talkgroups: talkgroups,
             channels: ChannelParamsMap::default(),
             curgroup: TalkGroup::Default,
-            encrypted: HashSet::default(),
             events: events,
             hub: hub,
             sdr: sdr,
@@ -74,6 +78,7 @@ impl RecvTask {
         // Reinitialize channel parameters if moving to a different channel.
         if freq != self.ctlfreq {
             self.channels = ChannelParamsMap::default();
+            self.talkgroups.clear_state();
         }
 
         self.ctlfreq = freq;
@@ -90,6 +95,8 @@ impl RecvTask {
         // FIXME: non-lexical borrowing
         let freq = self.ctlfreq;
         self.set_freq(freq);
+
+        self.policy.enter_control();
     }
 
     fn set_freq(&mut self, freq: u32) {
@@ -107,15 +114,48 @@ impl RecvTask {
         loop {
             match self.events.recv().expect("unable to receive baseband") {
                 RecvEvent::Baseband(samples) => {
+                    self.talkgroups.record_elapsed(samples.len());
+
                     for &s in samples.iter() {
                         self.handle_sample(s);
                     }
 
                     cb(&samples[..]);
+
+                    // FIXME: non-lexical borrowing
+                    let event = self.policy.handle_elapsed(samples.len());
+                    self.handle_policy(event);
                 },
                 RecvEvent::SetControlFreq(freq) => self.set_control_freq(freq),
             }
         }
+    }
+
+    fn handle_policy(&mut self, e: Option<PolicyEvent>) {
+        use self::PolicyEvent::*;
+
+        e.map(|e| match e {
+            Resync => self.msg.resync(),
+            ReturnControl => self.switch_control(),
+            ChooseTalkgroup => {
+                if let Some((tg, freq)) = self.talkgroups.select_idle() {
+                    self.select_talkgroup(tg, freq);
+                }
+            },
+        });
+    }
+
+    fn select_talkgroup(&mut self, tg: u16, freq: u32) {
+        if !self.hopping {
+            return;
+        }
+
+        self.curgroup = TalkGroup::Other(tg);
+        self.set_freq(freq);
+        self.policy.enter_traffic();
+
+        self.hub.send(HubEvent::UpdateTalkGroup(TalkGroup::Other(tg)))
+            .expect("unable to send talkgroup");
     }
 
     fn handle_sample(&mut self, s: f32) {
@@ -131,11 +171,9 @@ impl RecvTask {
         match event {
             Error(e) => self.stats.record_err(e),
             PacketNID(nid) => {
-                match nid.data_unit {
-                    DataUnit::VoiceLCTerminator | DataUnit::VoiceSimpleTerminator =>
-                        self.switch_control(),
-                    _ => {},
-                }
+                // FIXME: non-lexical borrowing
+                let event = self.policy.handle_nid(nid);
+                self.handle_policy(event);
             },
             VoiceHeader(head) => self.handle_crypto(head.crypto_alg()),
             LinkControl(lc) => self.handle_lc(lc),
@@ -163,15 +201,13 @@ impl RecvTask {
                     .expect("unable to send trunking control");
 
                 match opcode {
+                    TsbkOpcode::GroupVoiceGrant => {
+                        let grant = tsbk::GroupVoiceGrant::new(tsbk);
+                        self.add_talkgroup(grant.talkgroup(), grant.channel());
+                    },
                     TsbkOpcode::GroupVoiceUpdate => {
-                        let updates = fields::GroupTrafficUpdate::new(tsbk.payload())
-                                          .updates();
-
-                        for (ch, tg) in updates.iter().cloned() {
-                            if self.use_talkgroup(tg, ch) {
-                                break;
-                            }
-                        }
+                        self.handle_traffic_updates(
+                            &fields::GroupTrafficUpdate::new(tsbk.payload()));
                     },
                     TsbkOpcode::ChannelParamsUpdate => {
                         let dec = fields::ChannelParamsUpdate::new(tsbk.payload());
@@ -200,16 +236,25 @@ impl RecvTask {
 
         match opcode {
             LinkControlOpcode::CallTermination => {
-                // TODO: record that this conversation is complete
+                // FIXME: non-lexical borrowing
+                let event = self.policy.handle_call_term();
+                self.handle_policy(event);
             },
             LinkControlOpcode::GroupVoiceUpdate => {
-                let updates = fields::GroupTrafficUpdate::new(lc.payload()).updates();
+                self.handle_traffic_updates(
+                    &fields::GroupTrafficUpdate::new(lc.payload()));
 
-                for (ch, tg) in updates.iter().cloned() {
-                    // TODO: add talkgroups to list of candidates.
+                if let Some((tg, freq)) = self.talkgroups.select_preempt() {
+                    self.select_talkgroup(tg, freq);
                 }
             },
             _ => {},
+        }
+    }
+
+    fn handle_traffic_updates(&mut self, u: &fields::GroupTrafficUpdate) {
+        for &(ch, tg) in u.updates().iter() {
+            self.add_talkgroup(tg, ch);
         }
     }
 
@@ -221,32 +266,22 @@ impl RecvTask {
         self.switch_control();
 
         if let TalkGroup::Other(x) = self.curgroup {
-            self.encrypted.insert(x);
+            self.talkgroups.record_encrypted(x);
         }
     }
 
-    fn use_talkgroup(&mut self, tg: TalkGroup, ch: Channel) -> bool {
-        if let TalkGroup::Other(x) = tg {
-            if self.encrypted.contains(&x) {
-                return false;
-            }
-        }
+    fn add_talkgroup(&mut self, tg: TalkGroup, ch: Channel) {
+        let tg = match tg {
+            TalkGroup::Other(x) => x,
+            _ => return,
+        };
 
         let freq = match self.channels.lookup(ch.id()) {
             Some(p) => p.rx_freq(ch.number()),
-            None => return false,
+            None => return,
         };
 
-        self.curgroup = tg;
-
-        if self.hopping {
-            self.set_freq(freq);
-        }
-
-        self.hub.send(HubEvent::UpdateTalkGroup(tg))
-            .expect("unable to send talkgroup");
-
-        true
+        self.talkgroups.add_talkgroup(tg, freq);
     }
 }
 

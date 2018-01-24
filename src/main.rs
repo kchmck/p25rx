@@ -51,15 +51,19 @@ mod consts;
 mod demod;
 mod http;
 mod hub;
+mod policy;
 mod recv;
 mod sdr;
+mod talkgroups;
 
 use audio::{AudioOutput, AudioTask};
-use consts::SDR_SAMPLE_RATE;
+use consts::{BASEBAND_SAMPLE_RATE, SDR_SAMPLE_RATE};
 use demod::DemodTask;
 use hub::HubTask;
+use policy::ReceiverPolicy;
 use recv::{RecvTask, ReplayReceiver};
 use sdr::{ReadTask, ControlTask};
+use talkgroups::TalkgroupSelection;
 
 fn main() {
     let args = App::new("p25rx")
@@ -102,6 +106,21 @@ fn main() {
              .short("n")
              .long("nohop")
              .help("disable frequency hopping"))
+        .arg(Arg::with_name("pause")
+             .long("pause-timeout")
+             .help("time (sec) to wait for voice message to be resumed")
+             .default_value("2.0")
+             .value_name("TIME"))
+        .arg(Arg::with_name("watchdog")
+             .long("watchdog-timeout")
+             .help("time (sec) to wait for voice message to begin")
+             .default_value("2.0")
+             .value_name("TIME"))
+        .arg(Arg::with_name("tgselect")
+             .long("tgselect-timeout")
+             .help("time (sec) to collect talkgroups before making a selection")
+             .default_value("1.0")
+             .value_name("TIME"))
         .get_matches();
 
     let audio_out = || {
@@ -161,6 +180,13 @@ fn main() {
 
     let hopping = !args.is_present("nohop");
 
+    let pause = time_samples(args.value_of("pause").unwrap().parse()
+        .expect("invalid pause timeout"));
+    let watchdog = time_samples(args.value_of("watchdog").unwrap().parse()
+        .expect("invalid watchdog timeout"));
+    let tgselect = time_samples(args.value_of("tgselect").unwrap().parse()
+        .expect("invalid tgselect timeout"));
+
     control.set_ppm(ppm).expect("unable to set ppm");
     control.set_sample_rate(SDR_SAMPLE_RATE).expect("unable to set sample rate");
 
@@ -176,13 +202,16 @@ fn main() {
     let (tx_audio, rx_audio) = channel();
     let (tx_hub, rx_hub) = mio_more::channel::channel();
 
+    let policy = ReceiverPolicy::new(tgselect, watchdog, pause);
+    let talkgroups = TalkgroupSelection::default();
+
     let mut hub = HubTask::new(rx_hub, tx_recv.clone(), &addr)
         .expect("unable to start hub");
     let mut control = ControlTask::new(control, rx_ctl);
     let mut read = ReadTask::new(tx_read);
     let mut demod = DemodTask::new(rx_read, tx_hub.clone(), tx_recv.clone());
     let mut recv = RecvTask::new(freq, rx_recv, tx_hub.clone(),
-        tx_ctl.clone(), tx_audio.clone(), hopping);
+        tx_ctl.clone(), tx_audio.clone(), hopping, policy, talkgroups);
     let mut audio = AudioTask::new(audio_out(), rx_audio);
 
     crossbeam::scope(|scope| {
@@ -227,4 +256,9 @@ fn main() {
             audio.run();
         });
     });
+}
+
+/// Convert the given seconds into an amount of baseband samples.
+fn time_samples(t: f32) -> usize {
+    (t * BASEBAND_SAMPLE_RATE as f32) as usize
 }
