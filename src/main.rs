@@ -53,6 +53,7 @@ mod http;
 mod hub;
 mod policy;
 mod recv;
+mod replay;
 mod sdr;
 mod talkgroups;
 
@@ -61,7 +62,8 @@ use consts::{BASEBAND_SAMPLE_RATE, SDR_SAMPLE_RATE};
 use demod::DemodTask;
 use hub::HubTask;
 use policy::ReceiverPolicy;
-use recv::{RecvTask, ReplayReceiver};
+use recv::RecvTask;
+use replay::ReplayReceiver;
 use sdr::{ReadTask, ControlTask};
 use talkgroups::TalkgroupSelection;
 
