@@ -277,8 +277,6 @@ fn main() {
 
             if let Some(mut f) = samples_file {
                 recv.run(|samples| {
-                    // This is safe because it's converting N 32-bit words to 4N 8-bit
-                    // words.
                     f.write_all(unsafe {
                         slice_cast::cast(samples)
                     }).expect("unable to write baseband");
