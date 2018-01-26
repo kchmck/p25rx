@@ -7,7 +7,7 @@ use mio_more;
 use p25::message::receiver::MessageReceiver;
 use p25::stats::Stats;
 use p25::trunking::fields::{self, TalkGroup, ChannelParamsMap, Channel};
-use p25::trunking::tsbk::{self, TsbkOpcode};
+use p25::trunking::tsbk::{self, TsbkOpcode, TsbkFields};
 use p25::voice::control::LinkControlFields;
 use p25::voice::crypto::CryptoAlgorithm;
 use pool::Checkout;
@@ -186,43 +186,45 @@ impl RecvTask {
                 self.audio.send(AudioEvent::VoiceFrame(vf))
                     .expect("unable to send voice frame");
             },
-            TrunkingControl(tsbk) => {
-                if tsbk.mfg() != 0 {
-                    return;
-                }
-
-                if !tsbk.crc_valid() {
-                    return;
-                }
-
-                let opcode = match tsbk.opcode() {
-                    Some(o) => o,
-                    None => return,
-                };
-
-                self.hub.send(HubEvent::TrunkingControl(tsbk))
-                    .expect("unable to send trunking control");
-
-                match opcode {
-                    TsbkOpcode::GroupVoiceGrant => {
-                        let grant = tsbk::GroupVoiceGrant::new(tsbk);
-                        self.add_talkgroup(grant.talkgroup(), grant.channel());
-                    },
-                    TsbkOpcode::GroupVoiceUpdate => {
-                        self.handle_traffic_updates(
-                            &fields::GroupTrafficUpdate::new(tsbk.payload()));
-                    },
-                    TsbkOpcode::ChannelParamsUpdate => {
-                        let dec = fields::ChannelParamsUpdate::new(tsbk.payload());
-                        self.channels.update(&dec);
-                        self.hub.send(HubEvent::State(
-                            StateEvent::UpdateChannelParams(tsbk)
-                        )).expect("unable to send channel update");
-                    },
-                    _ => {},
-                }
-            },
+            TrunkingControl(tsbk) => self.handle_tsbk(tsbk),
             VoiceTerm(lc) => self.handle_lc(lc),
+        }
+    }
+
+    fn handle_tsbk(&mut self, tsbk: TsbkFields) {
+        if tsbk.mfg() != 0 {
+            return;
+        }
+
+        if !tsbk.crc_valid() {
+            return;
+        }
+
+        let opcode = match tsbk.opcode() {
+            Some(o) => o,
+            None => return,
+        };
+
+        self.hub.send(HubEvent::TrunkingControl(tsbk))
+            .expect("unable to send trunking control");
+
+        match opcode {
+            TsbkOpcode::GroupVoiceGrant => {
+                let grant = tsbk::GroupVoiceGrant::new(tsbk);
+                self.add_talkgroup(grant.talkgroup(), grant.channel());
+            },
+            TsbkOpcode::GroupVoiceUpdate => {
+                self.handle_traffic_updates(
+                    &fields::GroupTrafficUpdate::new(tsbk.payload()));
+            },
+            TsbkOpcode::ChannelParamsUpdate => {
+                let dec = fields::ChannelParamsUpdate::new(tsbk.payload());
+                self.channels.update(&dec);
+                self.hub.send(HubEvent::State(
+                    StateEvent::UpdateChannelParams(tsbk)
+                )).expect("unable to send channel update");
+            },
+            _ => {},
         }
     }
 
