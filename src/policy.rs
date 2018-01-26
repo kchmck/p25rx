@@ -78,6 +78,7 @@ impl ReceiverPolicy {
                 NoChange
             },
             Traffic(ref mut t, _) | Paused(ref mut t) => if t.expired(samples) {
+                debug!("watchdog timeout");
                 Event(ReturnControl)
             } else {
                 NoChange
@@ -98,8 +99,10 @@ impl ReceiverPolicy {
                 VoiceLCTerminator | VoiceSimpleTerminator => NoChange,
                 // Start processing traffic normally after receiving the first voice
                 // header or voice frame.
-                VoiceHeader | VoiceLCFrameGroup | VoiceCCFrameGroup =>
-                    Change(self.state_traffic(false)),
+                VoiceHeader | VoiceLCFrameGroup | VoiceCCFrameGroup => {
+                    debug!("receiving voice message");
+                    Change(self.state_traffic(false))
+                },
                 // Ignore spurious TSBKs that occur immediately after switching to a
                 // traffic channel. The NID for these gets decoded from the control
                 // channel backlog samples buffered by librtlsdr, but an unrecoverable
@@ -109,8 +112,10 @@ impl ReceiverPolicy {
                 _ => NoChange,
             },
             Traffic(ref mut t, false) => match nid.data_unit {
-                VoiceLCTerminator | VoiceSimpleTerminator =>
-                    Change(Paused(Timer::new(self.pause_time))),
+                VoiceLCTerminator | VoiceSimpleTerminator => {
+                    debug!("pausing for voice message continuation");
+                    Change(Paused(Timer::new(self.pause_time)))
+                },
                 VoiceHeader | VoiceLCFrameGroup | VoiceCCFrameGroup => {
                     // Let the watchdog know that voice packets are still being received.
                     t.reset();
@@ -120,6 +125,7 @@ impl ReceiverPolicy {
             },
             Paused(..) => match nid.data_unit {
                 VoiceHeader | VoiceLCFrameGroup | VoiceCCFrameGroup => {
+                    debug!("resuming voice message");
                     Change(self.state_traffic(true))
                 },
                 _ => NoChange,
@@ -137,7 +143,10 @@ impl ReceiverPolicy {
             Control(..) => NoChange,
             // The call terminator indicates that the current voice message won't be
             // continued.
-            Traffic(..) | Paused(..) => Event(ReturnControl),
+            Traffic(..) | Paused(..) => {
+                debug!("voice message terminated");
+                Event(ReturnControl)
+            },
         })
     }
 

@@ -3,6 +3,9 @@
 #[macro_use]
 extern crate serde_derive;
 
+#[macro_use]
+extern crate log;
+
 extern crate arrayvec;
 extern crate chan;
 extern crate chrono;
@@ -10,6 +13,7 @@ extern crate clap;
 extern crate collect_slice;
 extern crate crossbeam;
 extern crate demod_fm;
+extern crate env_logger;
 extern crate fnv;
 extern crate imbe;
 extern crate libc;
@@ -21,8 +25,8 @@ extern crate p25;
 extern crate p25_filts;
 extern crate pool;
 extern crate prctl;
-extern crate rtlsdr_mt;
 extern crate rtlsdr_iq;
+extern crate rtlsdr_mt;
 extern crate serde;
 extern crate serde_json;
 extern crate slice_cast;
@@ -44,6 +48,8 @@ use std::io::{BufWriter, Write};
 use std::sync::mpsc::channel;
 
 use clap::{Arg, App};
+use env_logger::{Builder, Env};
+use log::LevelFilter;
 use rtlsdr_mt::TunerGains;
 
 mod audio;
@@ -69,6 +75,10 @@ use talkgroups::TalkgroupSelection;
 
 fn main() {
     let args = App::new("p25rx")
+        .arg(Arg::with_name("verbose")
+            .short("v")
+            .help("enable verbose logging (pass twice to be extra verbose)")
+            .multiple(true))
         .arg(Arg::with_name("ppm")
              .short("p")
              .help("ppm frequency adjustment")
@@ -125,11 +135,26 @@ fn main() {
              .value_name("TIME"))
         .get_matches();
 
+    {
+        let level = match args.occurrences_of("verbose") {
+            0 => LevelFilter::Info,
+            1 => LevelFilter::Debug,
+            _ => LevelFilter::Trace,
+        };
+
+        Builder::from_env(Env::default())
+            .filter(None, level)
+            .init();
+    }
+
     let audio_out = || {
+        let path = args.value_of("audio").expect("-a option is required");
+        info!("writing audio frames to {}", path);
+
         AudioOutput::new(BufWriter::new(
             OpenOptions::new()
                 .write(true)
-                .open(args.value_of("audio").expect("-a option is required"))
+                .open(path)
                 .expect("unable to open audio output file")
         ))
     };
@@ -160,6 +185,7 @@ fn main() {
         s => s.parse().expect("invalid device index"),
     };
 
+    info!("opening RTL-SDR at index {}", dev);
     let (mut control, reader) = rtlsdr_mt::open(dev)
         .expect("unable to open rtlsdr");
 
@@ -175,9 +201,15 @@ fn main() {
 
             return;
         },
-        "auto" => control.enable_agc().expect("unable to enable agc"),
-        s => control.set_tuner_gain(s.parse().expect("invalid gain"))
-                .expect("unable to set gain")
+        "auto" => {
+            info!("enabling hardware AGC");
+            control.enable_agc().expect("unable to enable agc");
+        },
+        s => {
+            let gain = s.parse().expect("invalid gain");
+            info!("setting hardware gain to {:.1} dB", gain as f32 / 10.0);
+            control.set_tuner_gain(gain).expect("unable to set gain");
+        },
     }
 
     let hopping = !args.is_present("nohop");
@@ -189,14 +221,16 @@ fn main() {
     let tgselect = time_samples(args.value_of("tgselect").unwrap().parse()
         .expect("invalid tgselect timeout"));
 
+    info!("setting frequency offset to {} PPM", ppm);
     control.set_ppm(ppm).expect("unable to set ppm");
     control.set_sample_rate(SDR_SAMPLE_RATE).expect("unable to set sample rate");
 
     let freq: u32 = args.value_of("freq").expect("-f option is required")
         .parse().expect("invalid frequency");
+    info!("using control channel frequency {} Hz", freq);
 
     let addr = args.value_of("bind").unwrap().parse()
-        .expect("unable to bind tcp socket");
+        .expect("invalid bind address");
 
     let (tx_ctl, rx_ctl) = channel();
     let (tx_recv, rx_recv) = channel();
@@ -207,6 +241,7 @@ fn main() {
     let policy = ReceiverPolicy::new(tgselect, watchdog, pause);
     let talkgroups = TalkgroupSelection::default();
 
+    info!("starting HTTP server at http://{}", addr);
     let mut hub = HubTask::new(rx_hub, tx_recv.clone(), &addr)
         .expect("unable to start hub");
     let mut control = ControlTask::new(control, rx_ctl);

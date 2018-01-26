@@ -42,6 +42,8 @@ impl TalkgroupSelection {
             return;
         }
 
+        debug!("collecting talkgroup {}", tg);
+
         self.cur.push(tg);
 
         if self.preempt.contains(&tg) {
@@ -55,6 +57,7 @@ impl TalkgroupSelection {
     /// talkgroup ID and `freq` is the traffic channel center frequency (Hz). Otherwise,
     /// return `None` if no talkgroups are available.
     pub fn select_idle(&mut self) -> Option<(u16, u32)> {
+        debug!("selecting from {} talkgroups", self.cur.len());
         self.feats.max_score(&self.cur).map(|tg| self.select_tg(tg))
     }
 
@@ -69,11 +72,14 @@ impl TalkgroupSelection {
 
     /// Record that the given talkgroup is encrypted.
     pub fn record_encrypted(&mut self, tg: u16) {
+        debug!("marking talkgroup {} as encrypted", tg);
         self.encrypted.insert(tg);
     }
 
     /// Finalize selection of the given talkgroup.
     fn select_tg(&mut self, tg: u16) -> (u16, u32) {
+        debug!("using talkgroup {}", tg);
+
         let freq = self.channels[&tg];
 
         self.clear_candidates();

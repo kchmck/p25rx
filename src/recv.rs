@@ -98,6 +98,7 @@ impl RecvTask {
     }
 
     fn set_freq(&mut self, freq: u32) {
+        debug!("moving to frequency {} Hz", freq);
         self.curfreq = freq;
 
         self.hub.send(HubEvent::UpdateCurFreq(freq))
@@ -174,6 +175,8 @@ impl RecvTask {
         match event {
             Error(e) => self.stats.record_err(e),
             PacketNID(nid) => {
+                trace!("received NID {:?}", nid.data_unit);
+
                 // FIXME: non-lexical borrowing
                 let event = self.policy.handle_nid(nid);
                 self.handle_policy(event);
@@ -205,6 +208,8 @@ impl RecvTask {
             None => return,
         };
 
+        trace!("received TSBK with opcode {:?}", opcode);
+
         self.hub.send(HubEvent::TrunkingControl(tsbk))
             .expect("unable to send trunking control");
 
@@ -235,6 +240,8 @@ impl RecvTask {
             Some(o) => o,
             None => return,
         };
+
+        trace!("received LC word with opcode {:?}", opcode);
 
         self.hub.send(HubEvent::LinkControl(lc))
             .expect("unable to send link control");
