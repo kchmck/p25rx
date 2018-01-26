@@ -157,7 +157,7 @@ impl RecvTask {
         self.set_freq(freq);
         self.policy.enter_traffic();
 
-        self.hub.send(HubEvent::UpdateTalkGroup(TalkGroup::Other(tg)))
+        self.hub.send(HubEvent::UpdateTalkGroup(self.curgroup))
             .expect("unable to send talkgroup");
     }
 
