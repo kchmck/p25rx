@@ -132,7 +132,12 @@ impl RecvTask {
     fn handle_policy(&mut self, e: Option<PolicyEvent>) {
         use self::PolicyEvent::*;
 
-        e.map(|e| match e {
+        let event = match e {
+            Some(e) => e,
+            None => return,
+        };
+
+        match event {
             Resync => self.msg.resync(),
             ReturnControl => self.switch_control(),
             ChooseTalkgroup => {
@@ -140,7 +145,7 @@ impl RecvTask {
                     self.select_talkgroup(tg, freq);
                 }
             },
-        });
+        }
     }
 
     fn select_talkgroup(&mut self, tg: u16, freq: u32) {
