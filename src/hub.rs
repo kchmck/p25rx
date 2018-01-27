@@ -308,7 +308,7 @@ impl HubTask {
         Ok(())
     }
 
-    fn stream_event(&mut self, mut s: &mut TcpStream, e: &HubEvent) -> Result<(), ()> {
+    fn stream_event(&mut self, s: &mut TcpStream, e: &HubEvent) -> Result<(), ()> {
         use self::HubEvent::*;
         use self::StateEvent::*;
 
@@ -326,21 +326,8 @@ impl HubTask {
                 TsbkOpcode::NetworkStatusBroadcast =>
                     SerdeEvent::new("networkStatus", SerdeNetworkStatus::new(
                         &fields::NetworkStatusBroadcast::new(tsbk.payload()))).write(s),
-                TsbkOpcode::AltControlChannel => {
-                    let dec = fields::AltControlChannel::new(tsbk.payload());
-
-                    for &(ch, _) in dec.alts().iter() {
-                        let freq = match self.state.channels.lookup(ch.id()) {
-                            Some(p) => p.rx_freq(ch.number()),
-                            None => continue,
-                        };
-
-                        try!(SerdeEvent::new("altControl",
-                            SerdeAltControl::new(&dec, freq)).write(&mut s));
-                    }
-
-                    Ok(())
-                },
+                TsbkOpcode::AltControlChannel => self.stream_alt_control(s,
+                    fields::AltControlChannel::new(tsbk.payload())),
                 TsbkOpcode::AdjacentSite => {
                     let dec = fields::AdjacentSite::new(tsbk.payload());
                     let ch = dec.channel();
@@ -369,9 +356,27 @@ impl HubTask {
                 LinkControlOpcode::GroupVoiceTraffic =>
                     SerdeEvent::new("srcUnit",
                         control::GroupVoiceTraffic::new(lc).src_unit()).write(s),
+                LinkControlOpcode::AltControlChannel => self.stream_alt_control(s,
+                    fields::AltControlChannel::new(lc.payload())),
                 _ => Ok(()),
             }
         }
+    }
+
+    fn stream_alt_control(&self, mut s: &mut TcpStream, f: fields::AltControlChannel)
+        -> Result<(), ()>
+    {
+        for &(ch, _) in f.alts().iter() {
+            let freq = match self.state.channels.lookup(ch.id()) {
+                Some(p) => p.rx_freq(ch.number()),
+                None => continue,
+            };
+
+            try!(SerdeEvent::new("altControl",
+                SerdeAltControl::new(&f, freq)).write(&mut s));
+        }
+
+        Ok(())
     }
 }
 
