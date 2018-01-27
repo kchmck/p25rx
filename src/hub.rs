@@ -314,25 +314,18 @@ impl HubTask {
 
         match *e {
             State(UpdateCtlFreq(f)) => SerdeEvent::new("ctlFreq", f).write(s),
-
             State(UpdateChannelParams(_)) => Ok(()),
-
             UpdateCurFreq(f) => SerdeEvent::new("curFreq", f).write(s),
-
             UpdateTalkGroup(tg) => SerdeEvent::new("talkGroup", tg).write(s),
-
             UpdateSignalPower(p) => SerdeEvent::new("sigPower", p).write(s),
-
             // If this event has been received, the TSBK is valid with a known opcode.
             TrunkingControl(tsbk) => match tsbk.opcode().unwrap() {
                 TsbkOpcode::RfssStatusBroadcast =>
                     SerdeEvent::new("rfssStatus", SerdeRfssStatus::new(
                         &fields::RfssStatusBroadcast::new(tsbk.payload()))).write(s),
-
                 TsbkOpcode::NetworkStatusBroadcast =>
                     SerdeEvent::new("networkStatus", SerdeNetworkStatus::new(
                         &fields::NetworkStatusBroadcast::new(tsbk.payload()))).write(s),
-
                 TsbkOpcode::AltControlChannel => {
                     let dec = fields::AltControlChannel::new(tsbk.payload());
 
@@ -348,7 +341,6 @@ impl HubTask {
 
                     Ok(())
                 },
-
                 TsbkOpcode::AdjacentSite => {
                     let dec = fields::AdjacentSite::new(tsbk.payload());
                     let ch = dec.channel();
@@ -361,20 +353,16 @@ impl HubTask {
                     SerdeEvent::new("adjacentSite",
                         SerdeAdjacentSite::new(&dec, freq)).write(s)
                 },
-
                 TsbkOpcode::LocRegResponse =>
                     SerdeEvent::new("locReg", SerdeLocRegResponse::new(
                         &tsbk::LocRegResponse::new(tsbk))).write(s),
-
                 _ => Ok(()),
             },
-
             // If this event has been received, the LC has a known opcode.
             LinkControl(lc) => match lc.opcode().unwrap() {
                 LinkControlOpcode::GroupVoiceTraffic =>
                     SerdeEvent::new("srcUnit",
                         control::GroupVoiceTraffic::new(lc).src_unit()).write(s),
-
                 _ => Ok(()),
             }
         }
