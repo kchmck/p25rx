@@ -31,7 +31,7 @@ pub struct RecvTask {
     policy: ReceiverPolicy,
     talkgroups: TalkgroupSelection,
     channels: ChannelParamsMap,
-    curgroup: TalkGroup,
+    curgroup: u16,
     events: Receiver<RecvEvent>,
     hub: mio_more::channel::Sender<HubEvent>,
     sdr: Sender<ControlTaskEvent>,
@@ -58,7 +58,7 @@ impl RecvTask {
             policy: policy,
             talkgroups: talkgroups,
             channels: ChannelParamsMap::default(),
-            curgroup: TalkGroup::Default,
+            curgroup: 0,
             events: events,
             hub: hub,
             sdr: sdr,
@@ -154,7 +154,7 @@ impl RecvTask {
             return;
         }
 
-        self.curgroup = TalkGroup::Other(tg);
+        self.curgroup = tg;
         self.set_freq(freq);
         self.policy.enter_traffic();
 
@@ -276,10 +276,7 @@ impl RecvTask {
         }
 
         self.switch_control();
-
-        if let TalkGroup::Other(x) = self.curgroup {
-            self.talkgroups.record_encrypted(x);
-        }
+        self.talkgroups.record_encrypted(self.curgroup);
     }
 
     fn add_talkgroup(&mut self, tg: TalkGroup, ch: Channel) {

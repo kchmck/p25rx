@@ -12,7 +12,7 @@ use mio_more::channel::Receiver;
 use mio::{Poll, PollOpt, Token, Event, Events, Ready};
 use mio::tcp::TcpListener;
 use mio::unix::EventedFd;
-use p25::trunking::fields::{self, TalkGroup, ChannelParamsMap};
+use p25::trunking::fields::{self, ChannelParamsMap};
 use p25::trunking::tsbk::{TsbkFields, TsbkOpcode};
 use p25::voice::control::{self, LinkControlFields, LinkControlOpcode};
 use serde_json;
@@ -385,7 +385,7 @@ pub enum HubEvent {
     /// Center frequency was changed.
     UpdateCurFreq(u32),
     /// Current talkgroup has changed.
-    UpdateTalkGroup(TalkGroup),
+    UpdateTalkGroup(u16),
     /// Power of received signal.
     UpdateSignalPower(f32),
     /// Trunking control packet was received.
