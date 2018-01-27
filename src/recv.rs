@@ -24,47 +24,47 @@ pub enum RecvEvent {
 }
 
 pub struct RecvTask {
-    ctlfreq: u32,
-    curfreq: u32,
-    msg: MessageReceiver,
-    hopping: bool,
-    policy: ReceiverPolicy,
-    talkgroups: TalkgroupSelection,
-    channels: ChannelParamsMap,
-    curgroup: u16,
     events: Receiver<RecvEvent>,
     hub: mio_more::channel::Sender<HubEvent>,
     sdr: Sender<ControlTaskEvent>,
     audio: Sender<AudioEvent>,
+    ctlfreq: u32,
+    hopping: bool,
+    msg: MessageReceiver,
+    policy: ReceiverPolicy,
+    talkgroups: TalkgroupSelection,
+    channels: ChannelParamsMap,
+    curfreq: u32,
+    curgroup: u16,
     stats: Stats,
 }
 
 impl RecvTask {
-    pub fn new(freq: u32,
-               events: Receiver<RecvEvent>,
+    pub fn new(events: Receiver<RecvEvent>,
                hub: mio_more::channel::Sender<HubEvent>,
                sdr: Sender<ControlTaskEvent>,
                audio: Sender<AudioEvent>,
+               ctlfreq: u32,
                hopping: bool,
                policy: ReceiverPolicy,
                talkgroups: TalkgroupSelection)
         -> Self
     {
         RecvTask {
-            ctlfreq: std::u32::MAX,
-            curfreq: std::u32::MAX,
-            msg: MessageReceiver::new(),
-            hopping: hopping,
-            policy: policy,
-            talkgroups: talkgroups,
-            channels: ChannelParamsMap::default(),
-            curgroup: 0,
             events: events,
             hub: hub,
             sdr: sdr,
             audio: audio,
+            ctlfreq: std::u32::MAX,
+            hopping: hopping,
+            msg: MessageReceiver::new(),
+            policy: policy,
+            talkgroups: talkgroups,
+            channels: ChannelParamsMap::default(),
+            curfreq: std::u32::MAX,
+            curgroup: 0,
             stats: Stats::default(),
-        }.init(freq)
+        }.init(ctlfreq)
     }
 
     fn init(mut self, freq: u32) -> Self {

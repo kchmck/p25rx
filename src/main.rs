@@ -247,8 +247,8 @@ fn main() {
     let mut control = ControlTask::new(control, rx_ctl);
     let mut read = ReadTask::new(tx_read);
     let mut demod = DemodTask::new(rx_read, tx_hub.clone(), tx_recv.clone());
-    let mut recv = RecvTask::new(freq, rx_recv, tx_hub.clone(),
-        tx_ctl.clone(), tx_audio.clone(), hopping, policy, talkgroups);
+    let mut recv = RecvTask::new(rx_recv, tx_hub.clone(),
+        tx_ctl.clone(), tx_audio.clone(), freq, hopping, policy, talkgroups);
     let mut audio = AudioTask::new(audio_out(), rx_audio);
 
     crossbeam::scope(|scope| {
