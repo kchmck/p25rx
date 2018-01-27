@@ -465,7 +465,7 @@ impl<T: Serialize> SerdeEvent<T> {
 }
 
 #[derive(Serialize, Clone, Copy)]
-pub struct SerdeRfssStatus {
+struct SerdeRfssStatus {
     area: u8,
     system: u16,
     rfss: u8,
@@ -484,7 +484,7 @@ impl SerdeRfssStatus {
 }
 
 #[derive(Serialize, Clone, Copy)]
-pub struct SerdeNetworkStatus {
+struct SerdeNetworkStatus {
     area: u8,
     wacn: u32,
     system: u16,
@@ -501,7 +501,7 @@ impl SerdeNetworkStatus {
 }
 
 #[derive(Serialize, Clone, Copy)]
-pub struct SerdeAltControl {
+struct SerdeAltControl {
     rfss: u8,
     site: u8,
     freq: u32,
@@ -518,7 +518,7 @@ impl SerdeAltControl {
 }
 
 #[derive(Serialize, Clone, Copy)]
-pub struct SerdeAdjacentSite {
+struct SerdeAdjacentSite {
     area: u8,
     rfss: u8,
     system: u16,
