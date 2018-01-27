@@ -356,6 +356,9 @@ impl HubTask {
                 TsbkOpcode::LocRegResponse =>
                     SerdeEvent::new("locReg", SerdeLocRegResponse::new(
                         &tsbk::LocRegResponse::new(tsbk))).write(s),
+                TsbkOpcode::UnitRegResponse =>
+                    SerdeEvent::new("unitReg", SerdeUnitRegResponse::new(
+                        &tsbk::UnitRegResponse::new(tsbk))).write(s),
                 _ => Ok(()),
             },
             // If this event has been received, the LC has a known opcode.
@@ -541,6 +544,26 @@ impl SerdeLocRegResponse {
             rfss: s.rfss(),
             site: s.site(),
             unit: s.dest_unit(),
+        }
+    }
+}
+
+#[derive(Serialize, Clone, Copy)]
+#[allow(non_snake_case)]
+struct SerdeUnitRegResponse {
+    response: RegResponse,
+    system: u16,
+    unitId: u32,
+    unitAddr: u32,
+}
+
+impl SerdeUnitRegResponse {
+    pub fn new(s: &tsbk::UnitRegResponse) -> Self {
+        SerdeUnitRegResponse {
+            response: s.response(),
+            system: s.system(),
+            unitId: s.src_id(),
+            unitAddr: s.src_addr(),
         }
     }
 }
