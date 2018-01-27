@@ -320,9 +320,8 @@ impl HubTask {
             UpdateSignalPower(p) => SerdeEvent::new("sigPower", p).write(s),
             // If this event has been received, the TSBK is valid with a known opcode.
             TrunkingControl(tsbk) => match tsbk.opcode().unwrap() {
-                TsbkOpcode::RfssStatusBroadcast =>
-                    SerdeEvent::new("rfssStatus", SerdeRfssStatus::new(
-                        &fields::RfssStatusBroadcast::new(tsbk.payload()))).write(s),
+                TsbkOpcode::RfssStatusBroadcast => self.stream_rfss_status(s,
+                    fields::RfssStatusBroadcast::new(tsbk.payload())),
                 TsbkOpcode::NetworkStatusBroadcast =>
                     SerdeEvent::new("networkStatus", SerdeNetworkStatus::new(
                         &fields::NetworkStatusBroadcast::new(tsbk.payload()))).write(s),
@@ -346,6 +345,8 @@ impl HubTask {
                 LinkControlOpcode::GroupVoiceTraffic =>
                     SerdeEvent::new("srcUnit",
                         control::GroupVoiceTraffic::new(lc).src_unit()).write(s),
+                LinkControlOpcode::RfssStatusBroadcast => self.stream_rfss_status(s,
+                    fields::RfssStatusBroadcast::new(lc.payload())),
                 LinkControlOpcode::AdjacentSite => self.stream_adjacent_site(s,
                     fields::AdjacentSite::new(lc.payload())),
                 LinkControlOpcode::AltControlChannel => self.stream_alt_control(s,
@@ -353,6 +354,12 @@ impl HubTask {
                 _ => Ok(()),
             }
         }
+    }
+
+    fn stream_rfss_status(&self, s: &mut TcpStream, f: fields::RfssStatusBroadcast)
+        -> Result<(), ()>
+    {
+        SerdeEvent::new("rfssStatus", SerdeRfssStatus::new(&f)).write(s)
     }
 
     fn stream_alt_control(&self, mut s: &mut TcpStream, f: fields::AltControlChannel)
