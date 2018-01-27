@@ -328,18 +328,8 @@ impl HubTask {
                         &fields::NetworkStatusBroadcast::new(tsbk.payload()))).write(s),
                 TsbkOpcode::AltControlChannel => self.stream_alt_control(s,
                     fields::AltControlChannel::new(tsbk.payload())),
-                TsbkOpcode::AdjacentSite => {
-                    let dec = fields::AdjacentSite::new(tsbk.payload());
-                    let ch = dec.channel();
-
-                    let freq = match self.state.channels.lookup(ch.id()) {
-                        Some(p) => p.rx_freq(ch.number()),
-                        None => return Ok(()),
-                    };
-
-                    SerdeEvent::new("adjacentSite",
-                        SerdeAdjacentSite::new(&dec, freq)).write(s)
-                },
+                TsbkOpcode::AdjacentSite => self.stream_adjacent_site(s,
+                    fields::AdjacentSite::new(tsbk.payload())),
                 TsbkOpcode::LocRegResponse =>
                     SerdeEvent::new("locReg", SerdeLocRegResponse::new(
                         &tsbk::LocRegResponse::new(tsbk))).write(s),
@@ -356,6 +346,8 @@ impl HubTask {
                 LinkControlOpcode::GroupVoiceTraffic =>
                     SerdeEvent::new("srcUnit",
                         control::GroupVoiceTraffic::new(lc).src_unit()).write(s),
+                LinkControlOpcode::AdjacentSite => self.stream_adjacent_site(s,
+                    fields::AdjacentSite::new(lc.payload())),
                 LinkControlOpcode::AltControlChannel => self.stream_alt_control(s,
                     fields::AltControlChannel::new(lc.payload())),
                 _ => Ok(()),
@@ -377,6 +369,20 @@ impl HubTask {
         }
 
         Ok(())
+    }
+
+    fn stream_adjacent_site(&self, s: &mut TcpStream, f: fields::AdjacentSite)
+        -> Result<(), ()>
+    {
+        let ch = f.channel();
+
+        let freq = match self.state.channels.lookup(ch.id()) {
+            Some(p) => p.rx_freq(ch.number()),
+            None => return Ok(()),
+        };
+
+        SerdeEvent::new("adjacentSite",
+            SerdeAdjacentSite::new(&f, freq)).write(s)
     }
 }
 
