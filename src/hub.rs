@@ -12,8 +12,8 @@ use mio_more::channel::Receiver;
 use mio::{Poll, PollOpt, Token, Event, Events, Ready};
 use mio::tcp::TcpListener;
 use mio::unix::EventedFd;
-use p25::trunking::fields::{self, ChannelParamsMap};
-use p25::trunking::tsbk::{TsbkFields, TsbkOpcode};
+use p25::trunking::fields::{self, ChannelParamsMap, RegResponse};
+use p25::trunking::tsbk::{self, TsbkFields, TsbkOpcode};
 use p25::voice::control::{self, LinkControlFields, LinkControlOpcode};
 use serde_json;
 use serde::Serialize;
@@ -362,6 +362,10 @@ impl HubTask {
                         SerdeAdjacentSite::new(&dec, freq)).write(s)
                 },
 
+                TsbkOpcode::LocRegResponse =>
+                    SerdeEvent::new("locReg", SerdeLocRegResponse::new(
+                        &tsbk::LocRegResponse::new(tsbk))).write(s),
+
                 _ => Ok(()),
             },
 
@@ -530,6 +534,25 @@ impl SerdeAdjacentSite {
             system: s.system(),
             site: s.site(),
             freq: freq,
+        }
+    }
+}
+
+#[derive(Serialize, Clone, Copy)]
+struct SerdeLocRegResponse {
+    response: RegResponse,
+    rfss: u8,
+    site: u8,
+    unit: u32,
+}
+
+impl SerdeLocRegResponse {
+    pub fn new(s: &tsbk::LocRegResponse) -> Self {
+        SerdeLocRegResponse {
+            response: s.response(),
+            rfss: s.rfss(),
+            site: s.site(),
+            unit: s.dest_unit(),
         }
     }
 }
