@@ -322,9 +322,8 @@ impl HubTask {
             TrunkingControl(tsbk) => match tsbk.opcode().unwrap() {
                 TsbkOpcode::RfssStatusBroadcast => self.stream_rfss_status(s,
                     fields::RfssStatusBroadcast::new(tsbk.payload())),
-                TsbkOpcode::NetworkStatusBroadcast =>
-                    SerdeEvent::new("networkStatus", SerdeNetworkStatus::new(
-                        &fields::NetworkStatusBroadcast::new(tsbk.payload()))).write(s),
+                TsbkOpcode::NetworkStatusBroadcast => self.stream_net_status(s,
+                    fields::NetworkStatusBroadcast::new(tsbk.payload())),
                 TsbkOpcode::AltControlChannel => self.stream_alt_control(s,
                     fields::AltControlChannel::new(tsbk.payload())),
                 TsbkOpcode::AdjacentSite => self.stream_adjacent_site(s,
@@ -347,6 +346,8 @@ impl HubTask {
                         control::GroupVoiceTraffic::new(lc).src_unit()).write(s),
                 LinkControlOpcode::RfssStatusBroadcast => self.stream_rfss_status(s,
                     fields::RfssStatusBroadcast::new(lc.payload())),
+                LinkControlOpcode::NetworkStatusBroadcast => self.stream_net_status(s,
+                    fields::NetworkStatusBroadcast::new(lc.payload())),
                 LinkControlOpcode::AdjacentSite => self.stream_adjacent_site(s,
                     fields::AdjacentSite::new(lc.payload())),
                 LinkControlOpcode::AltControlChannel => self.stream_alt_control(s,
@@ -360,6 +361,12 @@ impl HubTask {
         -> Result<(), ()>
     {
         SerdeEvent::new("rfssStatus", SerdeRfssStatus::new(&f)).write(s)
+    }
+
+    fn stream_net_status(&self, s: &mut TcpStream, f: fields::NetworkStatusBroadcast)
+        -> Result<(), ()>
+    {
+        SerdeEvent::new("networkStatus", SerdeNetworkStatus::new(&f)).write(s)
     }
 
     fn stream_alt_control(&self, mut s: &mut TcpStream, f: fields::AltControlChannel)
