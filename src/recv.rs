@@ -18,28 +18,46 @@ use policy::{ReceiverPolicy, PolicyEvent};
 use sdr::ControlTaskEvent;
 use talkgroups::TalkgroupSelection;
 
+/// Messages for `RecvTask`.
 pub enum RecvEvent {
+    /// Chunk of baseband samples.
     Baseband(Checkout<Vec<f32>>),
+    /// Change the control channel frequency.
     SetControlFreq(u32),
 }
 
+/// Processes P25 baseband and performs the duties of a trunking receiver.
 pub struct RecvTask {
+    /// Receiver events.
     events: Receiver<RecvEvent>,
+    /// Event streaming.
     hub: mio_more::channel::Sender<HubEvent>,
+    /// SDR control task.
     sdr: Sender<ControlTaskEvent>,
+    /// Audio output task.
     audio: Sender<AudioEvent>,
+    /// Control channel frequency (Hz).
     ctlfreq: u32,
+    /// Whether frequency hopping is enabled.
     hopping: bool,
+    /// Receiver state machine.
     msg: MessageReceiver,
+    /// Policy state machine.
     policy: ReceiverPolicy,
+    /// Talkgroup selection machinery.
     talkgroups: TalkgroupSelection,
+    /// Channel mappings.
     channels: ChannelParamsMap,
+    /// Current center frequency (Hz).
     curfreq: u32,
+    /// Current talkgroup being monitored.
     curgroup: u16,
+    /// Accumlated statistics.
     stats: Stats,
 }
 
 impl RecvTask {
+    /// Create a new `RecvTask`.
     pub fn new(events: Receiver<RecvEvent>,
                hub: mio_more::channel::Sender<HubEvent>,
                sdr: Sender<ControlTaskEvent>,
@@ -67,11 +85,15 @@ impl RecvTask {
         }.init(ctlfreq)
     }
 
+    /// Finalize initialization of the receiver.
     fn init(mut self, freq: u32) -> Self {
         self.set_control_freq(freq);
         self
     }
 
+    /// Change the control channel frequency (Hz).
+    ///
+    /// This will immediately switch to the new control channel.
     fn set_control_freq(&mut self, freq: u32) {
         // Reinitialize channel parameters if moving to a different channel.
         if freq != self.ctlfreq {
@@ -86,6 +108,7 @@ impl RecvTask {
         self.switch_control();
     }
 
+    /// Move to the control channel.
     fn switch_control(&mut self) {
         self.audio.send(AudioEvent::EndTransmission)
             .expect("unable to send end of transmission");
@@ -97,6 +120,7 @@ impl RecvTask {
         self.policy.enter_control();
     }
 
+    /// Move to the given frequency (Hz).
     fn set_freq(&mut self, freq: u32) {
         debug!("moving to frequency {} Hz", freq);
         self.curfreq = freq;
@@ -109,6 +133,7 @@ impl RecvTask {
         self.msg.resync();
     }
 
+    /// Begin processing baseband samples, blocking the current thread.
     pub fn run<F: FnMut(&[f32])>(&mut self, mut cb: F) {
         loop {
             match self.events.recv().expect("unable to receive baseband") {
@@ -130,6 +155,7 @@ impl RecvTask {
         }
     }
 
+    /// Handle the given policy event.
     fn handle_policy(&mut self, e: Option<PolicyEvent>) {
         use self::PolicyEvent::*;
 
@@ -149,6 +175,7 @@ impl RecvTask {
         }
     }
 
+    /// Choose the given talkgroup as the next to monitor.
     fn select_talkgroup(&mut self, tg: u16, freq: u32) {
         if !self.hopping {
             return;
@@ -162,6 +189,7 @@ impl RecvTask {
             .expect("unable to send talkgroup");
     }
 
+    /// Process the given baseband sample.
     fn handle_sample(&mut self, s: f32) {
         use p25::message::receiver::MessageEvent::*;
 
@@ -194,6 +222,7 @@ impl RecvTask {
         }
     }
 
+    /// Process the given trunking packet.
     fn handle_tsbk(&mut self, tsbk: TsbkFields) {
         if tsbk.mfg() != 0 {
             return;
@@ -233,6 +262,7 @@ impl RecvTask {
         }
     }
 
+    /// Process the given link control word.
     fn handle_lc(&mut self, lc: LinkControlFields) {
         use p25::voice::control::LinkControlOpcode;
 
@@ -264,12 +294,14 @@ impl RecvTask {
         }
     }
 
+    /// Collect talkgroups from the given traffic update packet.
     fn handle_traffic_updates(&mut self, u: &fields::GroupTrafficUpdate) {
         for &(ch, tg) in u.updates().iter() {
             self.add_talkgroup(tg, ch);
         }
     }
 
+    /// Process the given encryption info for the current talkgroup.
     fn handle_crypto(&mut self, alg: CryptoAlgorithm) {
         if let CryptoAlgorithm::Unencrypted = alg {
             return;
@@ -279,6 +311,7 @@ impl RecvTask {
         self.talkgroups.record_encrypted(self.curgroup);
     }
 
+    /// Collect the given talkgroup and associated traffic channel.
     fn add_talkgroup(&mut self, tg: TalkGroup, ch: Channel) {
         let tg = match tg {
             TalkGroup::Other(x) => x,
