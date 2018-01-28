@@ -8,15 +8,15 @@ use std::sync::mpsc::{Sender, TryRecvError};
 use std;
 
 use arrayvec::ArrayVec;
-use mio_more::channel::Receiver;
-use mio::{Poll, PollOpt, Token, Event, Events, Ready};
 use mio::tcp::TcpListener;
 use mio::unix::EventedFd;
+use mio::{Poll, PollOpt, Token, Event, Events, Ready};
+use mio_more::channel::Receiver;
 use p25::trunking::fields::{self, ChannelParamsMap, RegResponse};
 use p25::trunking::tsbk::{self, TsbkFields, TsbkOpcode};
 use p25::voice::control::{self, LinkControlFields, LinkControlOpcode};
-use serde_json;
 use serde::Serialize;
+use serde_json;
 use uhttp_json_api::{HttpRequest, HttpResult};
 use uhttp_method::Method;
 use uhttp_response_header::HeaderLines;
