@@ -12,7 +12,7 @@ use mio::tcp::TcpListener;
 use mio::unix::EventedFd;
 use mio::{Poll, PollOpt, Token, Event, Events, Ready};
 use mio_more::channel::Receiver;
-use p25::trunking::fields::{self, ChannelParamsMap, RegResponse};
+use p25::trunking::fields::{self, ChannelParamsMap};
 use p25::trunking::tsbk::{self, TsbkFields, TsbkOpcode};
 use p25::voice::control::{self, LinkControlFields, LinkControlOpcode};
 use p25::voice::crypto::CryptoAlgorithm;
@@ -342,15 +342,35 @@ impl HubTask {
                     fields::AltControlChannel::new(tsbk.payload())),
                 TsbkOpcode::AdjacentSite => self.stream_adjacent_site(s,
                     fields::AdjacentSite::new(tsbk.payload())),
-                TsbkOpcode::LocRegResponse =>
-                    SerdeEvent::new("locReg", SerdeLocRegResponse::new(
-                        &tsbk::LocRegResponse::new(tsbk))).write(s),
-                TsbkOpcode::UnitRegResponse =>
-                    SerdeEvent::new("unitReg", SerdeUnitRegResponse::new(
-                        &tsbk::UnitRegResponse::new(tsbk))).write(s),
-                TsbkOpcode::UnitDeregAck =>
-                    SerdeEvent::new("unitDereg", SerdeUnitDeregAck::new(
-                        &tsbk::UnitDeregAck::new(tsbk))).write(s),
+                TsbkOpcode::LocRegResponse => {
+                    let f = tsbk::LocRegResponse::new(tsbk);
+
+                    SerdeEvent::new("locReg", json!({
+                        "response": f.response(),
+                        "rfss": f.rfss(),
+                        "site": f.site(),
+                        "unit": f.dest_unit(),
+                    })).write(s)
+                },
+                TsbkOpcode::UnitRegResponse => {
+                    let f = tsbk::UnitRegResponse::new(tsbk);
+
+                    SerdeEvent::new("unitReg", json!({
+                        "response": f.response(),
+                        "system": f.system(),
+                        "unitId": f.src_id(),
+                        "unitAddr": f.src_addr(),
+                    })).write(s)
+                },
+                TsbkOpcode::UnitDeregAck => {
+                    let f = tsbk::UnitDeregAck::new(tsbk);
+
+                    SerdeEvent::new("unitDereg", json!({
+                        "wacn": f.wacn(),
+                        "system": f.system(),
+                        "unit": f.src_unit(),
+                    })).write(s)
+                },
                 _ => Ok(()),
             },
             // If this event has been received, the LC has a known opcode.
@@ -374,13 +394,22 @@ impl HubTask {
     fn stream_rfss_status(&self, s: &mut TcpStream, f: fields::RfssStatusBroadcast)
         -> Result<(), ()>
     {
-        SerdeEvent::new("rfssStatus", SerdeRfssStatus::new(&f)).write(s)
+        SerdeEvent::new("rfssStatus", json!({
+            "area": f.area(),
+            "system": f.system(),
+            "rfss": f.rfss(),
+            "site": f.site(),
+        })).write(s)
     }
 
     fn stream_net_status(&self, s: &mut TcpStream, f: fields::NetworkStatusBroadcast)
         -> Result<(), ()>
     {
-        SerdeEvent::new("networkStatus", SerdeNetworkStatus::new(&f)).write(s)
+        SerdeEvent::new("networkStatus", json!({
+            "area": f.area(),
+            "wacn": f.wacn(),
+            "system": f.system(),
+        })).write(s)
     }
 
     fn stream_alt_control(&self, mut s: &mut TcpStream, f: fields::AltControlChannel)
@@ -392,8 +421,11 @@ impl HubTask {
                 None => continue,
             };
 
-            try!(SerdeEvent::new("altControl",
-                SerdeAltControl::new(&f, freq)).write(&mut s));
+            try!(SerdeEvent::new("altControl", json!({
+                "rfss": f.rfss(),
+                "site": f.site(),
+                "freq": freq,
+            })).write(&mut s));
         }
 
         Ok(())
@@ -409,8 +441,13 @@ impl HubTask {
             None => return Ok(()),
         };
 
-        SerdeEvent::new("adjacentSite",
-            SerdeAdjacentSite::new(&f, freq)).write(s)
+        SerdeEvent::new("adjacentSite", json!({
+            "area": f.area(),
+            "rfss": f.rfss(),
+            "system": f.system(),
+            "site": f.site(),
+            "freq": freq,
+        })).write(s)
     }
 }
 
@@ -500,135 +537,5 @@ impl<T: Serialize> SerdeEvent<T> {
         let mut data = msg.data().map_err(|_| ())?;
 
         serde_json::to_writer(&mut data, self).map_err(|_| ())
-    }
-}
-
-#[derive(Serialize, Clone, Copy)]
-struct SerdeRfssStatus {
-    area: u8,
-    system: u16,
-    rfss: u8,
-    site: u8,
-}
-
-impl SerdeRfssStatus {
-    pub fn new(s: &fields::RfssStatusBroadcast) -> Self {
-        SerdeRfssStatus {
-            area: s.area(),
-            system: s.system(),
-            rfss: s.rfss(),
-            site: s.site(),
-        }
-    }
-}
-
-#[derive(Serialize, Clone, Copy)]
-struct SerdeNetworkStatus {
-    area: u8,
-    wacn: u32,
-    system: u16,
-}
-
-impl SerdeNetworkStatus {
-    pub fn new(s: &fields::NetworkStatusBroadcast) -> Self {
-        SerdeNetworkStatus {
-            area: s.area(),
-            wacn: s.wacn(),
-            system: s.system(),
-        }
-    }
-}
-
-#[derive(Serialize, Clone, Copy)]
-struct SerdeAltControl {
-    rfss: u8,
-    site: u8,
-    freq: u32,
-}
-
-impl SerdeAltControl {
-    pub fn new(s: &fields::AltControlChannel, freq: u32) -> Self {
-        SerdeAltControl {
-            rfss: s.rfss(),
-            site: s.site(),
-            freq: freq,
-        }
-    }
-}
-
-#[derive(Serialize, Clone, Copy)]
-struct SerdeAdjacentSite {
-    area: u8,
-    rfss: u8,
-    system: u16,
-    site: u8,
-    freq: u32,
-}
-
-impl SerdeAdjacentSite {
-    pub fn new(s: &fields::AdjacentSite, freq: u32) -> Self {
-        SerdeAdjacentSite {
-            area: s.area(),
-            rfss: s.rfss(),
-            system: s.system(),
-            site: s.site(),
-            freq: freq,
-        }
-    }
-}
-
-#[derive(Serialize, Clone, Copy)]
-struct SerdeLocRegResponse {
-    response: RegResponse,
-    rfss: u8,
-    site: u8,
-    unit: u32,
-}
-
-impl SerdeLocRegResponse {
-    pub fn new(s: &tsbk::LocRegResponse) -> Self {
-        SerdeLocRegResponse {
-            response: s.response(),
-            rfss: s.rfss(),
-            site: s.site(),
-            unit: s.dest_unit(),
-        }
-    }
-}
-
-#[derive(Serialize, Clone, Copy)]
-#[allow(non_snake_case)]
-struct SerdeUnitRegResponse {
-    response: RegResponse,
-    system: u16,
-    unitId: u32,
-    unitAddr: u32,
-}
-
-impl SerdeUnitRegResponse {
-    pub fn new(s: &tsbk::UnitRegResponse) -> Self {
-        SerdeUnitRegResponse {
-            response: s.response(),
-            system: s.system(),
-            unitId: s.src_id(),
-            unitAddr: s.src_addr(),
-        }
-    }
-}
-
-#[derive(Serialize, Clone, Copy)]
-struct SerdeUnitDeregAck {
-    wacn: u32,
-    system: u16,
-    unit: u32,
-}
-
-impl SerdeUnitDeregAck {
-    pub fn new(s: &tsbk::UnitDeregAck) -> Self {
-        SerdeUnitDeregAck {
-            wacn: s.wacn(),
-            system: s.system(),
-            unit: s.src_unit(),
-        }
     }
 }
