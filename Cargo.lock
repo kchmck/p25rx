@@ -426,7 +426,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "p25"
 version = "1.0.0"
-source = "git+https://github.com/kchmck/p25.rs#97ff297a3214380d0c8d50ea6c90fb535df900e3"
+source = "git+https://github.com/kchmck/p25.rs#8010ac479009ee32f62c2a8ccd624bfdb0bfd179"
 dependencies = [
  "binfield_matrix 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "cai_cyclic 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
