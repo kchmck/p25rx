@@ -308,7 +308,7 @@ impl RecvTask {
         }
 
         self.switch_control();
-        self.talkgroups.record_encrypted(self.curgroup);
+        self.talkgroups.record_encrypted(self.curgroup, alg);
     }
 
     /// Collect the given talkgroup and associated traffic channel.

@@ -4,6 +4,10 @@ use std::collections::hash_map::HashMap;
 use std::collections::HashSet;
 
 use fnv::FnvBuildHasher;
+use p25::voice::crypto::CryptoAlgorithm;
+
+/// Maps talkgroups to associated encryption algorithm.
+pub type GroupCryptoMap = HashMap<u16, CryptoAlgorithm, FnvBuildHasher>;
 
 /// Collects, prioritizes, filters, and selects talkgroups.
 #[derive(Default)]
@@ -15,7 +19,7 @@ pub struct TalkgroupSelection {
     /// Channel frequency associated with each candidate talkgroup.
     channels: HashMap<u16, u32, FnvBuildHasher>,
     /// Set of talkgroups that have been observed to be encrypted.
-    encrypted: HashSet<u16, FnvBuildHasher>,
+    encrypted: GroupCryptoMap,
     /// Set of talkgroups that can preempt a conversation.
     preempt: HashSet<u16, FnvBuildHasher>,
     /// User-set included/excluded talkgroups.
@@ -32,7 +36,7 @@ impl TalkgroupSelection {
 
     /// Consider the given talkgroup for the current set of candidate talkgroups.
     pub fn add_talkgroup(&mut self, tg: u16, freq: u32) {
-        if self.encrypted.contains(&tg) || self.filter.excluded(tg) {
+        if self.encrypted.contains_key(&tg) || self.filter.excluded(tg) {
             return;
         }
 
@@ -71,9 +75,9 @@ impl TalkgroupSelection {
     }
 
     /// Record that the given talkgroup is encrypted.
-    pub fn record_encrypted(&mut self, tg: u16) {
-        debug!("marking talkgroup {} as encrypted", tg);
-        self.encrypted.insert(tg);
+    pub fn record_encrypted(&mut self, tg: u16, alg: CryptoAlgorithm) {
+        debug!("marking talkgroup {} as encrypted with {:?}", tg, alg);
+        self.encrypted.insert(tg, alg);
     }
 
     /// Finalize selection of the given talkgroup.
@@ -322,7 +326,7 @@ mod test {
         assert!(ts.channels.is_empty());
 
         // Test encrypted filter.
-        ts.encrypted.insert(20);
+        ts.encrypted.insert(20, CryptoAlgorithm::Aes);
         ts.add_talkgroup(20, 12);
         assert!(ts.cur.is_empty());
         assert!(ts.cur_preempt.is_empty());
