@@ -4,6 +4,9 @@
 extern crate serde_derive;
 
 #[macro_use]
+extern crate serde_json;
+
+#[macro_use]
 extern crate log;
 
 extern crate arrayvec;
@@ -28,7 +31,6 @@ extern crate prctl;
 extern crate rtlsdr_iq;
 extern crate rtlsdr_mt;
 extern crate serde;
-extern crate serde_json;
 extern crate slice_cast;
 extern crate slice_mip;
 extern crate static_decimate;

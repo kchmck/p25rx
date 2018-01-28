@@ -15,6 +15,7 @@ use mio_more::channel::Receiver;
 use p25::trunking::fields::{self, ChannelParamsMap, RegResponse};
 use p25::trunking::tsbk::{self, TsbkFields, TsbkOpcode};
 use p25::voice::control::{self, LinkControlFields, LinkControlOpcode};
+use p25::voice::crypto::CryptoAlgorithm;
 use serde::Serialize;
 use serde_json;
 use uhttp_json_api::{HttpRequest, HttpResult};
@@ -27,6 +28,7 @@ use uhttp_version::HttpVersion;
 
 use http;
 use recv::RecvEvent;
+use talkgroups::GroupCryptoMap;
 
 /// Available routes.
 enum Route {
@@ -34,6 +36,8 @@ enum Route {
     Subscribe,
     /// Get/Set control channel frequency.
     CtlFreq,
+    /// Get current known encrypted talkgroups.
+    Encrypted,
 }
 
 impl<'a> TryFrom<HttpResource<'a>> for Route {
@@ -43,6 +47,7 @@ impl<'a> TryFrom<HttpResource<'a>> for Route {
         match r.path {
             "/subscribe" => Ok(Route::Subscribe),
             "/ctlfreq" => Ok(Route::CtlFreq),
+            "/encrypted" => Ok(Route::Encrypted),
             _ => Err(StatusCode::NotFound),
         }
     }
@@ -285,6 +290,13 @@ impl HubTask {
 
                 Ok(())
             },
+            (Method::Get, Route::Encrypted) => {
+                http::send_json(req.into_stream(), json!({
+                    "encrypted": &self.state.encrypted,
+                })).is_ok();
+
+                Ok(())
+            },
             (Method::Options, _) => {
                 let mut h = HeaderLines::new(req.into_stream());
 
@@ -315,6 +327,8 @@ impl HubTask {
         match *e {
             State(UpdateCtlFreq(f)) => SerdeEvent::new("ctlFreq", f).write(s),
             State(UpdateChannelParams(_)) => Ok(()),
+            State(UpdateEncrypted(..)) =>
+                SerdeEvent::new("updateEncrypted", &self.state.encrypted).write(s),
             UpdateCurFreq(f) => SerdeEvent::new("curFreq", f).write(s),
             UpdateTalkGroup(tg) => SerdeEvent::new("talkGroup", tg).write(s),
             UpdateSignalPower(p) => SerdeEvent::new("sigPower", p).write(s),
@@ -424,6 +438,8 @@ pub enum StateEvent {
     UpdateCtlFreq(u32),
     /// Channel parameters have been modified.
     UpdateChannelParams(TsbkFields),
+    /// Encrypted talkgroup encountered.
+    UpdateEncrypted(u16, CryptoAlgorithm),
 }
 
 /// Holds a copy of certain state held in other tasks.
@@ -432,6 +448,8 @@ pub struct State {
     ctlfreq: u32,
     /// Channel parameters for current site.
     channels: ChannelParamsMap,
+    /// Known encrypted talkgroups.
+    encrypted: GroupCryptoMap,
 }
 
 impl Default for State {
@@ -439,6 +457,7 @@ impl Default for State {
         State {
             ctlfreq: std::u32::MAX,
             channels: ChannelParamsMap::default(),
+            encrypted: GroupCryptoMap::default(),
         }
     }
 }
@@ -452,6 +471,7 @@ impl State {
             UpdateCtlFreq(f) => self.ctlfreq = f,
             UpdateChannelParams(tsbk) =>
                 self.channels.update(&fields::ChannelParamsUpdate::new(tsbk.payload())),
+            UpdateEncrypted(tg, alg) => { self.encrypted.insert(tg, alg); },
         }
     }
 }

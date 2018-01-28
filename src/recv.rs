@@ -309,6 +309,10 @@ impl RecvTask {
 
         self.switch_control();
         self.talkgroups.record_encrypted(self.curgroup, alg);
+
+        self.hub.send(
+            HubEvent::State(StateEvent::UpdateEncrypted(self.curgroup, alg))
+        ).expect("unable to send encrypted talkgroups");
     }
 
     /// Collect the given talkgroup and associated traffic channel.
