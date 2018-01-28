@@ -367,7 +367,7 @@ impl HubTask {
                 LinkControlOpcode::AltControlChannel => self.stream_alt_control(s,
                     fields::AltControlChannel::new(lc.payload())),
                 _ => Ok(()),
-            }
+            },
         }
     }
 
