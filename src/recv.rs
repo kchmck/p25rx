@@ -11,6 +11,7 @@ use p25::trunking::tsbk::{self, TsbkOpcode, TsbkFields};
 use p25::voice::control::LinkControlFields;
 use p25::voice::crypto::CryptoAlgorithm;
 use pool::Checkout;
+use throttle::Throttler;
 
 use audio::AudioEvent;
 use hub::{HubEvent, StateEvent};
@@ -135,6 +136,8 @@ impl RecvTask {
 
     /// Begin processing baseband samples, blocking the current thread.
     pub fn run<F: FnMut(&[f32])>(&mut self, mut cb: F) {
+        let mut stats_notifier = Throttler::new(16);
+
         loop {
             match self.events.recv().expect("unable to receive baseband") {
                 RecvEvent::Baseband(samples) => {
@@ -152,6 +155,11 @@ impl RecvTask {
                 },
                 RecvEvent::SetControlFreq(freq) => self.set_control_freq(freq),
             }
+
+            stats_notifier.throttle(|| {
+                self.hub.send(HubEvent::UpdateStats(self.stats))
+                    .expect("unable to send stats");
+            });
         }
     }
 

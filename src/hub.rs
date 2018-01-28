@@ -12,6 +12,7 @@ use mio::tcp::TcpListener;
 use mio::unix::EventedFd;
 use mio::{Poll, PollOpt, Token, Event, Events, Ready};
 use mio_more::channel::Receiver;
+use p25::stats::{CodeStats, Stats};
 use p25::trunking::fields::{self, ChannelParamsMap};
 use p25::trunking::tsbk::{self, TsbkFields, TsbkOpcode};
 use p25::voice::control::{self, LinkControlFields, LinkControlOpcode};
@@ -388,6 +389,8 @@ impl HubTask {
                     fields::AltControlChannel::new(lc.payload())),
                 _ => Ok(()),
             },
+            UpdateStats(stats) =>
+                SerdeEvent::new("updateStats", serialize_stats(&stats)).write(s),
         }
     }
 
@@ -466,6 +469,8 @@ pub enum HubEvent {
     TrunkingControl(TsbkFields),
     /// Link control packet was received.
     LinkControl(LinkControlFields),
+    /// Updated stat counters.
+    UpdateStats(Stats),
 }
 
 /// State update events.
@@ -538,4 +543,30 @@ impl<T: Serialize> SerdeEvent<T> {
 
         serde_json::to_writer(&mut data, self).map_err(|_| ())
     }
+}
+
+fn serialize_stats(s: &Stats) -> impl Serialize {
+    json!({
+        "bch": serialize_code_stats(&s.bch),
+        "cyclic": serialize_code_stats(&s.cyclic),
+        "golayStd": serialize_code_stats(&s.golay_std),
+        "golayExt": serialize_code_stats(&s.golay_ext),
+        "golayShort": serialize_code_stats(&s.golay_short),
+        "hammingStd": serialize_code_stats(&s.hamming_std),
+        "hammingShort": serialize_code_stats(&s.hamming_short),
+        "rsShort": serialize_code_stats(&s.rs_short),
+        "rsMed": serialize_code_stats(&s.rs_med),
+        "rsLong": serialize_code_stats(&s.rs_long),
+        "viterbiDibit": serialize_code_stats(&s.viterbi_dibit),
+        "viterbiTribit": serialize_code_stats(&s.viterbi_tribit),
+    })
+}
+
+fn serialize_code_stats(s: &CodeStats) -> impl Serialize {
+    json!({
+        "totalWords": s.words,
+        "errWords": s.errs,
+        "totalSymbols": s.words * s.size,
+        "fixedSymbols": s.fixed,
+    })
 }
