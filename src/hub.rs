@@ -39,6 +39,8 @@ enum Route {
     CtlFreq,
     /// Get current known encrypted talkgroups.
     Encrypted,
+    /// Reset stat counters.
+    ResetStats,
 }
 
 impl<'a> TryFrom<HttpResource<'a>> for Route {
@@ -49,6 +51,7 @@ impl<'a> TryFrom<HttpResource<'a>> for Route {
             "/subscribe" => Ok(Route::Subscribe),
             "/ctlfreq" => Ok(Route::CtlFreq),
             "/encrypted" => Ok(Route::Encrypted),
+            "/stats/reset" => Ok(Route::ResetStats),
             _ => Err(StatusCode::NotFound),
         }
     }
@@ -295,6 +298,12 @@ impl HubTask {
                 http::send_json(req.into_stream(), json!({
                     "encrypted": &self.state.encrypted,
                 })).is_ok();
+
+                Ok(())
+            },
+            (Method::Put, Route::ResetStats) => {
+                self.recv.send(RecvEvent::ResetStats)
+                    .expect("unable to reset stats");
 
                 Ok(())
             },

@@ -25,6 +25,8 @@ pub enum RecvEvent {
     Baseband(Checkout<Vec<f32>>),
     /// Change the control channel frequency.
     SetControlFreq(u32),
+    /// Reset stat counters.
+    ResetStats,
 }
 
 /// Processes P25 baseband and performs the duties of a trunking receiver.
@@ -154,6 +156,7 @@ impl RecvTask {
                     self.handle_policy(event);
                 },
                 RecvEvent::SetControlFreq(freq) => self.set_control_freq(freq),
+                RecvEvent::ResetStats => self.stats.clear(),
             }
 
             stats_notifier.throttle(|| {
