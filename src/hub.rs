@@ -344,9 +344,9 @@ impl HubTask {
             UpdateSignalPower(p) => SerdeEvent::new("sigPower", p).write(s),
             // If this event has been received, the TSBK is valid with a known opcode.
             TrunkingControl(tsbk) => match tsbk.opcode().unwrap() {
-                TsbkOpcode::RfssStatusBroadcast => self.stream_rfss_status(s,
+                TsbkOpcode::RfssStatusBroadcast => stream_rfss_status(s,
                     fields::RfssStatusBroadcast::new(tsbk.payload())),
-                TsbkOpcode::NetworkStatusBroadcast => self.stream_net_status(s,
+                TsbkOpcode::NetworkStatusBroadcast => stream_net_status(s,
                     fields::NetworkStatusBroadcast::new(tsbk.payload())),
                 TsbkOpcode::AltControlChannel => self.stream_alt_control(s,
                     fields::AltControlChannel::new(tsbk.payload())),
@@ -388,9 +388,9 @@ impl HubTask {
                 LinkControlOpcode::GroupVoiceTraffic =>
                     SerdeEvent::new("srcUnit",
                         control::GroupVoiceTraffic::new(lc).src_unit()).write(s),
-                LinkControlOpcode::RfssStatusBroadcast => self.stream_rfss_status(s,
+                LinkControlOpcode::RfssStatusBroadcast => stream_rfss_status(s,
                     fields::RfssStatusBroadcast::new(lc.payload())),
-                LinkControlOpcode::NetworkStatusBroadcast => self.stream_net_status(s,
+                LinkControlOpcode::NetworkStatusBroadcast => stream_net_status(s,
                     fields::NetworkStatusBroadcast::new(lc.payload())),
                 LinkControlOpcode::AdjacentSite => self.stream_adjacent_site(s,
                     fields::AdjacentSite::new(lc.payload())),
@@ -401,27 +401,6 @@ impl HubTask {
             UpdateStats(stats) =>
                 SerdeEvent::new("updateStats", serialize_stats(&stats)).write(s),
         }
-    }
-
-    fn stream_rfss_status(&self, s: &mut TcpStream, f: fields::RfssStatusBroadcast)
-        -> Result<(), ()>
-    {
-        SerdeEvent::new("rfssStatus", json!({
-            "area": f.area(),
-            "system": f.system(),
-            "rfss": f.rfss(),
-            "site": f.site(),
-        })).write(s)
-    }
-
-    fn stream_net_status(&self, s: &mut TcpStream, f: fields::NetworkStatusBroadcast)
-        -> Result<(), ()>
-    {
-        SerdeEvent::new("networkStatus", json!({
-            "area": f.area(),
-            "wacn": f.wacn(),
-            "system": f.system(),
-        })).write(s)
     }
 
     fn stream_alt_control(&self, mut s: &mut TcpStream, f: fields::AltControlChannel)
@@ -552,6 +531,27 @@ impl<T: Serialize> SerdeEvent<T> {
 
         serde_json::to_writer(&mut data, self).map_err(|_| ())
     }
+}
+
+fn stream_rfss_status(s: &mut TcpStream, f: fields::RfssStatusBroadcast)
+    -> Result<(), ()>
+{
+    SerdeEvent::new("rfssStatus", json!({
+        "area": f.area(),
+        "system": f.system(),
+        "rfss": f.rfss(),
+        "site": f.site(),
+    })).write(s)
+}
+
+fn stream_net_status(s: &mut TcpStream, f: fields::NetworkStatusBroadcast)
+    -> Result<(), ()>
+{
+    SerdeEvent::new("networkStatus", json!({
+        "area": f.area(),
+        "wacn": f.wacn(),
+        "system": f.system(),
+    })).write(s)
 }
 
 fn serialize_stats(s: &Stats) -> impl Serialize {
