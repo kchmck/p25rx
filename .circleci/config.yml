@@ -7,6 +7,6 @@ jobs:
       - checkout
       - run: |
           apt update
-          apt install librtlsdr-dev
+          apt install -y librtlsdr-dev
           cargo build
           cargo rustc --release -- -C target-cpu=native -C lto
