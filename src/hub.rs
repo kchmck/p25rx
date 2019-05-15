@@ -242,7 +242,7 @@ impl HubTask {
     fn handle_stream(&mut self, mut s: TcpStream) {
         match self.handle_request(&mut s) {
             Ok(()) => {},
-            Err(e) => { http::send_status(&mut s, e).is_ok(); }
+            Err(e) => { http::send_status(&mut s, e).ok(); }
         }
     }
 
@@ -277,7 +277,7 @@ impl HubTask {
             (Method::Get, Route::CtlFreq) => {
                 http::send_json(req.into_stream(), SerdeCtlFreq {
                     ctlfreq: self.state.ctlfreq,
-                }).is_ok();
+                }).ok();
 
                 Ok(())
             },
@@ -290,14 +290,14 @@ impl HubTask {
                     return Err(StatusCode::InternalServerError);
                 }
 
-                http::send_status(req.into_stream(), StatusCode::Ok).is_ok();
+                http::send_status(req.into_stream(), StatusCode::Ok).ok();
 
                 Ok(())
             },
             (Method::Get, Route::Encrypted) => {
                 http::send_json(req.into_stream(), json!({
                     "encrypted": &self.state.encrypted,
-                })).is_ok();
+                })).ok();
 
                 Ok(())
             },
@@ -310,9 +310,9 @@ impl HubTask {
             (Method::Options, _) => {
                 let mut h = HeaderLines::new(req.into_stream());
 
-                http::send_head(&mut h, StatusCode::Ok).is_ok();
-                write!(h.line(), "Access-Control-Allow-Methods: GET, PUT").is_ok();
-                write!(h.line(), "Access-Control-Allow-Headers: Content-Type").is_ok();
+                http::send_head(&mut h, StatusCode::Ok).ok();
+                write!(h.line(), "Access-Control-Allow-Methods: GET, PUT").ok();
+                write!(h.line(), "Access-Control-Allow-Headers: Content-Type").ok();
 
                 Ok(())
             },
