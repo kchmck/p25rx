@@ -16,7 +16,8 @@ For a Linux machine, use the following build steps:
    ```
 
 2. Install the `librtlsdr` system library (`pacman -S rtl-sdr` on Archlinux or `apt-get
-   install rtl-sdr` on Ubuntu), and verify that the library is recognized by `pkg-config`:
+   install librtlsdr-dev` on Ubuntu), and verify that the library is recognized by
+   `pkg-config`:
 
    ```sh
    pkg-config --modversion librtlsdr
