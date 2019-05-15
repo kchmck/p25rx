@@ -1,5 +1,7 @@
 # p25rx – P25 receiver
 
+![CircleCI](https://img.shields.io/circleci/project/github/kchmck/p25rx/master.svg)
+
 This project implements a real-time Project 25 receiver in Rust. The receiver is
 trunking-aware and hops between control and traffic channels as talkgroup conversations
 begin and end.
