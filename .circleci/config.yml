@@ -11,3 +11,19 @@ jobs:
           cargo test
           cargo build
           cargo rustc --release -- -C target-cpu=native -C lto
+
+workflows:
+  version: 2
+  workflow:
+    jobs:
+      - build
+
+  check_latest:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only: master
+    jobs:
+      - build
